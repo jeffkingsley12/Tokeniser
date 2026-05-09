@@ -56,11 +56,15 @@ DEPS = $(MAIN_OBJS:.o=.d) $(BENCH_OBJS:.o=.d) $(MMAP_OBJS:.o=.d)
 # Default target
 .PHONY: all clean debug test bench install dirs help
 
-all: dirs tokenizer_demo bench test_bins
+all: dirs tokenizer_demo bench lib test_bins
 
 # Create build directories
 dirs:
 	@mkdir -p $(BUILD_HYBRID) $(BUILD_DEBUG) $(OBJ_DIR)
+
+# Shared library for Python/FFI integration
+lib: dirs
+	$(CC) $(CFLAGS) -shared -fPIC $(INCLUDES) -o libluganda_tok.so $(CORE_SOURCES) $(SRC_DIR)/tokenizer_api.c $(LDFLAGS)
 
 # Main tokenizer demo executable
 tokenizer_demo: dirs $(MAIN_OBJS)

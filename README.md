@@ -69,6 +69,52 @@ make test
 - `test/`: Regression and unit tests.
 - `build_antigravity/`: (Generated) Object files and binaries.
 
+## 🔌 Integration Guide
+
+### 1. Use directly from C/C++
+
+The API surface is small and designed for zero-copy production environments.
+
+```c
+#include "tokenizer.h"
+
+// Load a trained model (zero-copy mmap version)
+MmapTokenizer *mt = tokenizer_load_mmap("luganda_tok.bin");
+Tokenizer     *tok = &mt->base;
+
+// Encode
+uint32_t ids[512];
+int n = tokenizer_encode(tok, "okusoma", ids, 512);
+
+// Decode
+for (int i = 0; i < n; i++)
+    printf("%s ", tokenizer_decode(tok, ids[i]));
+
+// Cleanup
+tokenizer_destroy_mmap(mt);
+```
+
+### 2. Call from Python via ctypes
+
+For fast Python integration, compile the engine as a shared library:
+
+```bash
+gcc -O2 -shared -fPIC -Iinclude src/*.c -o libluganda_tok.so -lm
+```
+
+Then load it using `ctypes`:
+
+```python
+import ctypes
+lib = ctypes.CDLL("./libluganda_tok.so")
+# ... define restypes and argtypes ...
+```
+
+### 3. Porting to Other Runtimes
+
+The `.bin` format is designed for straightforward deserialization in Rust, Go, or Mojo. It consists of a fixed-width header followed by aligned CSR arrays. See `include/tokenizer.h` for the `MmapHeader` structure and data layout.
+
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+

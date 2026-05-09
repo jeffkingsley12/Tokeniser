@@ -11,8 +11,9 @@ tokenizer_demo
 benchmark_luganda
 benchmark
 benchmark_analysis
-benchmark_luganda
 train_bench
+libluganda_tok.so
+*.so
 minimal_test.bin
 test_security_model.bin
 test/test_benchmark_simple
