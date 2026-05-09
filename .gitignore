@@ -48,3 +48,7 @@ run_tests_temp.sh
 # Models
 *.bin
 !test/tokenizer_model.bin # Keep the sample model if it's needed for tests
+
+# Large corpus files
+*.corpus.txt
+luganda_corpus.txt
