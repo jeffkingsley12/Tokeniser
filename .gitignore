@@ -1,0 +1,50 @@
+# Build artifacts
+*.o
+*.d
+build/
+obj/
+obj_antigravity/
+build_antigravity/
+
+# Binaries
+tokenizer_demo
+benchmark_luganda
+benchmark
+benchmark_analysis
+benchmark_luganda
+train_bench
+minimal_test.bin
+test_security_model.bin
+test/test_benchmark_simple
+test/test_bugs
+test/test_corruption_minimal
+test/test_determinism
+test/test_edge_cases_fixed
+test/test_edge_cases_simple
+test/test_fixes
+test/test_grapheme
+test/test_serialization_security
+test/test_simple_tokenizer
+test/test_truth_layer
+test/test_utf8
+scratch/check_consts
+
+# Data and Results
+results.tsv
+benchmark_output.txt
+debug.txt
+test_output.txt
+analysis/
+analysis_reports/
+plots/
+__pycache__/
+
+# Patches and temp files
+update.patch
+run_tests_temp.sh
+*.tmp
+*.bak
+
+# Models
+*.bin
+!test/tokenizer_model.bin # Keep the sample model if it's needed for tests

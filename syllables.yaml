@@ -1,0 +1,3736 @@
+# =============================================================================
+# Luganda Syllable & Morpheme Source of Truth
+# =============================================================================
+#
+# PURPOSE
+# -------
+# This file is the single authoritative list of tokens that are pre-seeded
+# into the BPE vocabulary before training begins.  It is intentionally plain
+# text so that a linguist can extend it without touching any Python code.
+#
+# HOW TO ADD ENTRIES
+# ------------------
+# 1. Find the appropriate category below # (or create a new one).
+# 2. Add one entry per line  # indented with two spaces  # prefixed with "- ".
+# 3. Use lowercase only.  No dashes around morpheme keys # (hyphens are
+#    positional markers in grammars  # not part of the surface form).
+# 4. Run `python -m syllable_table_generator --validate` to check for
+#    within-category duplicates before committing.
+#
+# HOW TO CREATE A NEW CATEGORY
+# -----------------------------
+# Pick a name  # add it at the bottom  # and list its entries:
+#
+#   MY_NEW_CATEGORY:
+#     # Optional description comment
+#     - entry1
+#     - entry2
+#
+# The loader will pick it up automatically on the next run.
+#
+# ON CROSS-CATEGORY DUPLICATES
+# -----------------------------
+# The same surface form often belongs t
+  - omore than one category.
+# For example  # "mu" is simultaneously a valid CV syllable AND an object
+# infix AND a locative enclitic.  Listing it under all three is intentional:
+# each entry documents a distinct linguistic role.  The vocabulary seeder
+# deduplicates by byte content at runtime  # so no entry is ever inserted
+# twice into the BPE vocabulary.
+#
+# --validate only flags within-category duplicates as errors.
+# Cross-category overlaps are reported as informational notes.
+#
+# HIERARCHY # (for reference)
+# -------------------------
+# N = Nasal # (m  # n  # ŋ)   C = Consonant   S = Semivowel # (w  # y)
+# V = Vowel              G = Geminate # (doubled consonant)
+#
+# Complexity: NCSV > GSV > NCV > CSV > GV > CV > V
+# =============================================================================
+
+
+# -----------------------------------------------------------------------------
+# PHONOTACTIC SYLLABLE TYPES
+# Each category is generated from phonological rules.  Individual entries can
+# be removed here to suppress them  # or new ones added for dialectal forms.
+# -----------------------------------------------------------------------------
+
+CV:
+  # Single consonant + vowel — the most frequent Luganda syllable shape.
+  - ba
+  - be
+  - bi
+  - bo
+  - bu
+  - baa
+  - bee
+  - bii
+  - boo
+  - buu
+  - ca
+  - ce
+  - ci
+  - co
+  - cu
+  - caa
+  - cee
+  - cii
+  - coo
+  - cuu
+  - da
+  - de
+  - di
+  - do
+  - du
+  - daa
+  - dee
+  - dii
+  - doo
+  - duu
+  - fa
+  - fe
+  - fi
+  - fo
+  - fu
+  - faa
+  - fee
+  - fii
+  - foo
+  - fuu
+  - ga
+  - ge
+  - gi
+  - go
+  - gu
+  - gaa
+  - gee
+  - gii
+  - goo
+  - guu
+  - ha
+  - he
+  - hi
+  - ho
+  - hu
+  - haa
+  - hee
+  - hii
+  - hoo
+  - huu
+  - ja
+  - je
+  - ji
+  - jo
+  - ju
+  - jaa
+  - jee
+  - jii
+  - joo
+  - juu
+  - ka
+  - ke
+  - ki
+  - ko
+  - ku
+  - kaa
+  - kee
+  - kii
+  - koo
+  - kuu
+  - la
+  - le
+  - li
+  - lo
+  - lu
+  - laa
+  - lee
+  - lii
+  - loo
+  - luu
+  - pa
+  - pe
+  - pi
+  - po
+  - pu
+  - paa
+  - pee
+  - pii
+  - poo
+  - puu
+  - qa
+  - qe
+  - qi
+  - qo
+  - qu
+  - qaa
+  - qee
+  - qii
+  - qoo
+  - quu
+  - ra
+  - re
+  - ri
+  - ro
+  - ru
+  - raa
+  - ree
+  - rii
+  - roo
+  - ruu
+  - sa
+  - se
+  - si
+  - so
+  - su
+  - saa
+  - see
+  - sii
+  - soo
+  - suu
+  - ta
+  - te
+  - ti
+  - to
+  - tu
+  - taa
+  - tee
+  - tii
+  - too
+  - tuu
+  - va
+  - ve
+  - vi
+  - vo
+  - vu
+  - vaa
+  - vee
+  - vii
+  - voo
+  - vuu
+  - za
+  - ze
+  - zi
+  - zo
+  - zu
+  - zaa
+  - zee
+  - zii
+  - zoo
+  - zuu
+  - na
+  - ne
+  - ni
+  - no
+  - nu
+  - naa
+  - nee
+  - nii
+  - noo
+  - nuu
+  - ma
+  - me
+  - mi
+  - mo
+  - mu
+  - maa
+  - mee
+  - mii
+  - moo
+  - muu
+
+GV:
+  # Geminate consonant + vowel # (doubled onset).
+  - bba
+  - bbe
+  - bbi
+  - bbo
+  - bbu
+  - bbaa
+  - bbee
+  - bbii
+  - bboo
+  - bbuu
+  - cca
+  - cce
+  - cci
+  - cco
+  - ccu
+  - ccaa
+  - ccee
+  - ccii
+  - ccoo
+  - ccuu
+  - dda
+  - dde
+  - ddi
+  - ddo
+  - ddu
+  - ddaa
+  - ddee
+  - ddii
+  - ddoo
+  - dduu
+  - ffa
+  - ffe
+  - ffi
+  - ffo
+  - ffu
+  - ffaa
+  - ffee
+  - ffii
+  - ffoo
+  - ffuu
+  - gga
+  - gge
+  - ggi
+  - ggo
+  - ggu
+  - ggaa
+  - ggee
+  - ggii
+  - ggoo
+  - gguu
+  - hha
+  - hhe
+  - hhi
+  - hho
+  - hhu
+  - hhaa
+  - hhee
+  - hhii
+  - hhoo
+  - hhuu
+  - jja
+  - jje
+  - jji
+  - jjo
+  - jju
+  - jjaa
+  - jjee
+  - jjii
+  - jjoo
+  - jjuu
+  - kka
+  - kke
+  - kki
+  - kko
+  - kku
+  - kkaa
+  - kkee
+  - kkii
+  - kkoo
+  - kkuu
+  - lla
+  - lle
+  - lli
+  - llo
+  - llu
+  - llaa
+  - llee
+  - llii
+  - lloo
+  - lluu
+  - ppa
+  - ppe
+  - ppi
+  - ppo
+  - ppu
+  - ppaa
+  - ppee
+  - ppii
+  - ppoo
+  - ppuu
+  - qqa
+  - qqe
+  - qqi
+  - qqo
+  - qqu
+  - qqaa
+  - qqee
+  - qqii
+  - qqoo
+  - qquu
+  - rra
+  - rre
+  - rri
+  - rro
+  - rru
+  - rraa
+  - rree
+  - rrii
+  - rroo
+  - rruu
+  - ssa
+  - sse
+  - ssi
+  - sso
+  - ssu
+  - ssaa
+  - ssee
+  - ssii
+  - ssoo
+  - ssuu
+  - tta
+  - tte
+  - tti
+  - tto
+  - ttu
+  - ttaa
+  - ttee
+  - ttii
+  - ttoo
+  - ttuu
+  - vva
+  - vve
+  - vvi
+  - vvo
+  - vvu
+  - vvaa
+  - vvee
+  - vvii
+  - vvoo
+  - vvuu
+  - zza
+  - zze
+  - zzi
+  - zzo
+  - zzu
+  - zzaa
+  - zzee
+  - zzii
+  - zzoo
+  - zzuu
+  - nna
+  - nne
+  - nni
+  - nno
+  - nnu
+  - nnaa
+  - nnee
+  - nnii
+  - nnoo
+  - nnuu
+  - mma
+  - mme
+  - mmi
+  - mmo
+  - mmu
+  - mmaa
+  - mmee
+  - mmii
+  - mmoo
+  - mmuu
+
+CSV:
+  # Consonant + semivowel # (w/y) + vowel.
+  # Labials with 'w': only 'bw' is permitted; 'pw'  # 'fw'  # 'vw' are excluded.
+  - bwa
+  - bwe
+  - bwi
+  - bwo
+  - bwu
+  - bwaa
+  - bwee
+  - bwii
+  - bwoo
+  - bwuu
+  - bya
+  - bye
+  - byi
+  - byo
+  - byu
+  - byaa
+  - byee
+  - byii
+  - byoo
+  - byuu
+  - cwa
+  - cwe
+  - cwi
+  - cwo
+  - cwu
+  - cwaa
+  - cwee
+  - cwii
+  - cwoo
+  - cwuu
+  - dwa
+  - dwe
+  - dwi
+  - dwo
+  - dwu
+  - dwaa
+  - dwee
+  - dwii
+  - dwoo
+  - dwuu
+  - dya
+  - dye
+  - dyi
+  - dyo
+  - dyu
+  - dyaa
+  - dyee
+  - dyii
+  - dyoo
+  - dyuu
+  - fya
+  - fye
+  - fyi
+  - fyo
+  - fyu
+  - fyaa
+  - fyee
+  - fyii
+  - fyoo
+  - fyuu
+  - gwa
+  - gwe
+  - gwi
+  - gwo
+  - gwu
+  - gwaa
+  - gwee
+  - gwii
+  - gwoo
+  - gwuu
+  - gya
+  - gye
+  - gyi
+  - gyo
+  - gyu
+  - gyaa
+  - gyee
+  - gyii
+  - gyoo
+  - gyuu
+  - hwa
+  - hwe
+  - hwi
+  - hwo
+  - hwu
+  - hwaa
+  - hwee
+  - hwii
+  - hwoo
+  - hwuu
+  - hya
+  - hye
+  - hyi
+  - hyo
+  - hyu
+  - hyaa
+  - hyee
+  - hyii
+  - hyoo
+  - hyuu
+  - jwa
+  - jwe
+  - jwi
+  - jwo
+  - jwu
+  - jwaa
+  - jwee
+  - jwii
+  - jwoo
+  - jwuu
+  - kwa
+  - kwe
+  - kwi
+  - kwo
+  - kwu
+  - kwaa
+  - kwee
+  - kwii
+  - kwoo
+  - kwuu
+  - kya
+  - kye
+  - kyi
+  - kyo
+  - kyu
+  - kyaa
+  - kyee
+  - kyii
+  - kyoo
+  - kyuu
+  - lwa
+  - lwe
+  - lwi
+  - lwo
+  - lwu
+  - lwaa
+  - lwee
+  - lwii
+  - lwoo
+  - lwuu
+  - lya
+  - lye
+  - lyi
+  - lyo
+  - lyu
+  - lyaa
+  - lyee
+  - lyii
+  - lyoo
+  - lyuu
+  - pya
+  - pye
+  - pyi
+  - pyo
+  - pyu
+  - pyaa
+  - pyee
+  - pyii
+  - pyoo
+  - pyuu
+  - qwa
+  - qwe
+  - qwi
+  - qwo
+  - qwu
+  - qwaa
+  - qwee
+  - qwii
+  - qwoo
+  - qwuu
+  - qya
+  - qye
+  - qyi
+  - qyo
+  - qyu
+  - qyaa
+  - qyee
+  - qyii
+  - qyoo
+  - qyuu
+  - rwa
+  - rwe
+  - rwi
+  - rwo
+  - rwu
+  - rwaa
+  - rwee
+  - rwii
+  - rwoo
+  - rwuu
+  - rya
+  - rye
+  - ryi
+  - ryo
+  - ryu
+  - ryaa
+  - ryee
+  - ryii
+  - ryoo
+  - ryuu
+  - swa
+  - swe
+  - swi
+  - swo
+  - swu
+  - swaa
+  - swee
+  - swii
+  - swoo
+  - swuu
+  - sya
+  - sye
+  - syi
+  - syo
+  - syu
+  - syaa
+  - syee
+  - syii
+  - syoo
+  - syuu
+  - twa
+  - twe
+  - twi
+  - two
+  - twu
+  - twaa
+  - twee
+  - twii
+  - twoo
+  - twuu
+  - tya
+  - tye
+  - tyi
+  - tyo
+  - tyu
+  - tyaa
+  - tyee
+  - tyii
+  - tyoo
+  - tyuu
+  - vya
+  - vye
+  - vyi
+  - vyo
+  - vyu
+  - vyaa
+  - vyee
+  - vyii
+  - vyoo
+  - vyuu
+  - zwa
+  - zwe
+  - zwi
+  - zwo
+  - zwu
+  - zwaa
+  - zwee
+  - zwii
+  - zwoo
+  - zwuu
+  - zya
+  - zye
+  - zyi
+  - zyo
+  - zyu
+  - zyaa
+  - zyee
+  - zyii
+  - zyoo
+  - zyuu
+
+NCV:
+  # Nasal + consonant + vowel # (prenasalisation).
+  # 'm' prenasalises labials; 'n' prenasalises coronals and velars.
+  - nca
+  - nce
+  - nci
+  - nco
+  - ncu
+  - ncaa
+  - ncee
+  - ncii
+  - ncoo
+  - ncuu
+  - nda
+  - nde
+  - ndi
+  - ndo
+  - ndu
+  - ndaa
+  - ndee
+  - ndii
+  - ndoo
+  - nduu
+  - nga
+  - nge
+  - ngi
+  - ngo
+  - ngu
+  - ngaa
+  - ngee
+  - ngii
+  - ngoo
+  - nguu
+  - nja
+  - nje
+  - nji
+  - njo
+  - nju
+  - njaa
+  - njee
+  - njii
+  - njoo
+  - njuu
+  - nka
+  - nke
+  - nki
+  - nko
+  - nku
+  - nkaa
+  - nkee
+  - nkii
+  - nkoo
+  - nkuu
+  - nsa
+  - nse
+  - nsi
+  - nso
+  - nsu
+  - nsaa
+  - nsee
+  - nsii
+  - nsoo
+  - nsuu
+  - nta
+  - nte
+  - nti
+  - nto
+  - ntu
+  - ntaa
+  - ntee
+  - ntii
+  - ntoo
+  - ntuu
+  - nza
+  - nze
+  - nzi
+  - nzo
+  - nzu
+  - nzaa
+  - nzee
+  - nzii
+  - nzoo
+  - nzuu
+  - mba
+  - mbe
+  - mbi
+  - mbo
+  - mbu
+  - mbaa
+  - mbee
+  - mbii
+  - mboo
+  - mbuu
+  - mfa
+  - mfe
+  - mfi
+  - mfo
+  - mfu
+  - mfaa
+  - mfee
+  - mfii
+  - mfoo
+  - mfuu
+  - mpa
+  - mpe
+  - mpi
+  - mpo
+  - mpu
+  - mpaa
+  - mpee
+  - mpii
+  - mpoo
+  - mpuu
+  - mva
+  - mve
+  - mvi
+  - mvo
+  - mvu
+  - mvaa
+  - mvee
+  - mvii
+  - mvoo
+  - mvuu
+
+GSV:
+  # Geminate consonant + semivowel + vowel.
+  - bbwa
+  - bbwe
+  - bbwi
+  - bbwo
+  - bbwu
+  - bbwaa
+  - bbwee
+  - bbwii
+  - bbwoo
+  - bbwuu
+  - ddwa
+  - ddwe
+  - ddwi
+  - ddwo
+  - ddwu
+  - ddwaa
+  - ddwee
+  - ddwii
+  - ddwoo
+  - ddwuu
+  - ggya
+  - ggye
+  - ggyi
+  - ggyo
+  - ggyu
+  - ggyaa
+  - ggyee
+  - ggyii
+  - ggyoo
+  - ggyuu
+  - kkya
+  - kkye
+  - kkyi
+  - kkyo
+  - kkyu
+  - kkyaa
+  - kkyee
+  - kkyii
+  - kkyoo
+  - kkyuu
+  - ttwa
+  - ttwe
+  - ttwi
+  - ttwo
+  - ttwu
+  - ttwaa
+  - ttwee
+  - ttwii
+  - ttwoo
+  - ttwuu
+  - ttya
+  - ttye
+  - ttyi
+  - ttyo
+  - ttyu
+  - ttyaa
+  - ttyee
+  - ttyii
+  - ttyoo
+  - ttyuu
+
+NCSV:
+  # Nasal + consonant + semivowel + vowel # (the most complex onset).
+  # Classic example: mbwa # (m + b + w + a).
+  - ndwa
+  - ndwe
+  - ndwi
+  - ndwo
+  - ndwu
+  - ndwaa
+  - ndwee
+  - ndwii
+  - ndwoo
+  - ndwuu
+  - ndya
+  - ndye
+  - ndyi
+  - ndyo
+  - ndyu
+  - ndyaa
+  - ndyee
+  - ndyii
+  - ndyoo
+  - ndyuu
+  - ngya
+  - ngye
+  - ngyi
+  - ngyo
+  - ngyu
+  - ngyaa
+  - ngyee
+  - ngyii
+  - ngyoo
+  - ngyuu
+  - njya
+  - njye
+  - njyi
+  - njyo
+  - njyu
+  - njyaa
+  - njyee
+  - njyii
+  - njyoo
+  - njyuu
+  - nkya
+  - nkye
+  - nkyi
+  - nkyo
+  - nkyu
+  - nkyaa
+  - nkyee
+  - nkyii
+  - nkyoo
+  - nkyuu
+  - mbwa
+  - mbwe
+  - mbwi
+  - mbwo
+  - mbwu
+  - mbwaa
+  - mbwee
+  - mbwii
+  - mbwoo
+  - mbwuu
+
+NV:
+  # Velar nasal # (ŋ) + vowel.
+  - ŋa
+  - ŋe
+  - ŋi
+  - ŋo
+  - ŋu
+
+NNV:
+  # Geminate velar nasal + vowel.
+  - ŋŋa
+  - ŋŋe
+  - ŋŋi
+  - ŋŋo
+  - ŋŋu
+
+NYV:
+  # Palatal nasal digraph + vowel.
+  - nya
+  - nye
+  - nyi
+  - nyo
+  - nyu
+  - nyaa
+  - nyee
+  - nyii
+  - nyoo
+  - nyuu
+
+NNYV:
+  # Geminate palatal nasal + vowel.
+  - nnya
+  - nnye
+  - nnyi
+  - nnyo
+  - nnyu
+  - nnyaa
+  - nnyee
+  - nnyii
+  - nnyoo
+  - nnyuu
+
+
+# -----------------------------------------------------------------------------
+# MORPHEME CATEGORIES
+# These are grammatical units above the syllable level.  They are seeded into
+# the vocabulary so that BPE learns to treat them as indivisible bricks rather
+# than re-discovering them from frequency alone.
+#
+# Organisation mirrors the Luganda grammatical hierarchy.  Add new morphemes
+# to the most specific applicable section.
+# -----------------------------------------------------------------------------
+
+MORPHEME_noun_prefix:
+  # Noun class augment + prefix combinations # (the "omu-" in "omuntu").
+  - omu
+  - aba
+  - emi
+  - eri
+  - ama
+  - eki
+  - ebi
+  - olu
+  - aka
+  - otu
+  - obu
+  - oku
+  - ogu
+  - aga
+  - eye
+  - oka
+  - obwa
+  - ogwa
+  - egye
+  - erya
+  - olwa
+  - ezya
+  - omwa
+  - owa
+  - egg
+  - edd
+  - ebb
+  - emm
+
+MORPHEME_subject_negation:
+  # Independent pronouns and negation particles.
+  - nze
+  - ggwe
+  - ye
+  - ffe
+  - mmwe
+  - bo
+  - nte
+  - ote
+  - ate
+  - tute
+  - mute
+  - bate
+  - si
+  - ti
+  - te
+  - ne
+  - se
+  - tye
+  - nkyali
+  - okya
+  - akya
+  - tukya
+  - mukya
+  - bakya
+
+MORPHEME_tense_aspect:
+  # Tense and aspect infixes.  These appear between the subject marker and
+  # the verb root; list them without their dash positional markers.
+  - ana
+  - li
+  - na
+  - ka
+  - kyali
+  - noo
+  - aku
+  - koo
+  - ee
+  - ga
+  - ki
+  - gya
+  - lwa
+  - tya
+  - nna
+
+MORPHEME_object_infix:
+  # Object agreement infixes # (one per object noun class).
+  - n
+  - ku
+  - mu
+  - tu
+  - ba
+  - ki
+  - bi
+  - li
+  - ga
+  - lu
+  - ka
+  - bu
+  - gu
+  - gi
+  - wa
+
+MORPHEME_verbal_extension:
+  # Derivational suffixes that modify verb semantics # (applicative  # passive  #
+  # causative  # reciprocal  # reversive  # etc.).
+  - ira
+  - era
+  - irwa
+  - erwa
+  - isa
+  - esa
+  - ibwa
+  - ebwa
+  - ana
+  - ula
+  - uka
+  - uula
+  - uuka
+  - iza
+  - eza
+  - agana
+  - anya
+  - enya
+  - wa
+  - iddwa
+  - eddwa
+  - iriza
+  - ereza
+  - aka
+  - ala
+  - atula
+  - atuka
+  - uulula
+  - uuluka
+
+MORPHEME_locative_relative:
+  # Locative enclitics and relative concords.
+  - ko
+  - yo
+  - mu
+  - gye
+  - kye
+  - bye
+  - lwe
+  - mwe
+  - twe
+  - we
+  - be
+  - ze
+
+MORPHEME_function_word:
+  # High-frequency conjunctions  # adverbs  # and particles.
+  - naye
+  - kubanga
+  - era
+  - oba
+  - ate
+  - nga
+  - anti
+  - mpola
+  - ddala
+  - bulungi
+  - bubi
+  - mangu
+  - nyo
+  - na
+  - mu
+  - ku
+  - e
+  - wa
+  - ani
+  - ki
+  - tya
+  - meka
+  - muwe
+  - ndala
+  - yonna
+  - bonna
+  - kyonna
+  - lyonna
+  - wonna
+  - munda
+  - wabweru
+  - wansi
+  - wagulu
+  - wakati
+  - wala
+  - kumpi
+  - leero
+  - enkya
+  - eggulo
+  - jjo
+  - kakati
+  - edda
+  - bulijjo
+
+
+# -----------------------------------------------------------------------------
+# EXTENSION AREA
+# Add new categories below this line.  They will be picked up automatically.
+#
+# Examples of categories you might add:
+#
+#   MORPHEME_loanword_stem:
+#     # Common loanword stems that resist decomposition.
+#     - motoka
+#     - bbayisikeli
+#
+#   MORPHEME_proper_name_prefix:
+#     # Prefixes found in personal or place names.
+#     - ka
+#     - bu
+#     - mu
+# -----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
+# MORPHEME_verb_root
+# High-frequency Luganda verb stems in their surface form # (final -a retained).
+# These are the forms that appear in text after subject/tense markers.
+# The bare consonant-final stem # (e.g. "gend") emerges automatically when a
+# verbal extension from MORPHEME_verbal_extension is appended.
+# -----------------------------------------------------------------------------
+
+MORPHEME_verb_root:
+  # Motion / location
+  - genda
+  - dduka
+  - tambula
+  - tuula
+  - yimirira
+  - yingira
+  - fuluma
+  - seetuka
+  - jja
+  - va
+  - buuka
+  - teruka
+  - dda
+  # Work / action
+  - kola
+  - tuma
+  - teeka
+  - twala
+  - kwata
+  - siba
+  - londa
+  - banja
+  - tunda
+  - gula
+  - tema
+  - lima
+  - sala
+  - fumba
+  - bumba
+  - gemba
+  - loga
+  - kuuma
+  - situla
+  # Perception / cognition
+  - laba
+  - wulira
+  - yiga
+  - lowooza
+  - jukira
+  - tegeera
+  - kwatirira
+  # Speech / social
+  - gamba
+  - buulira
+  - lagira
+  - saba
+  - kkiriza
+  - welaba
+  - weereza
+  - nyumya
+  - yanjula
+  - tongoza
+  - labula
+  # Change of state
+  - fuuka
+  - kyuka
+  - menya
+  - ggula
+  - ziika
+  - mala
+  - tandika
+  - byuka
+  - noonya
+  - sangira
+  - funa
+  - beera
+  - lala
+  - yamba
+  - singa
+  # Physical / other
+  - kuba
+  - yimba
+  - zina
+  - bala
+  - linda
+  - jooga
+  - woza
+  - nyiga
+  - goba
+  - soma
+  - nuna
+  - gema
+  - lobera
+
+# -----------------------------------------------------------------------------
+# MORPHEME_noun_stem
+# Bare noun stems # (after stripping the Luganda class augment + prefix).
+# Listing the stem makes the root recognisable across all noun classes:
+#   omu-ntu  →  [omu]+[ntu]     # (Class 1)
+#   aba-ntu  →  [aba]+[ntu]     # (Class 2 plural)
+# -----------------------------------------------------------------------------
+
+MORPHEME_noun_stem:
+  # People / social roles
+  - ssebo
+  - nnyabo
+  - kabaka
+  - mugole
+  - mwami
+  - kazi
+  - sajja
+  - mwana
+  - wala
+  - somesa
+  - genyi
+  - lwadde
+  - nnaffe
+  # Places / landscape
+  - ttaka
+  - gganda
+  - buga
+  - kyalo
+  - nju
+  - kkubo
+  - ddungu
+  - nnimiro
+  - namirembe
+  - bulange
+  # Animals
+  - nkoko
+  - nte
+  - nnyonyi
+  - nswa
+  - musota
+  - ngo
+  - mpologoma
+  # Everyday objects
+  - tabo
+  - koofi
+  - ssanyu
+  - kitiibwa
+  - buyinza
+  - amaanyi
+  - obufuzi
+  - emmere
+  - mazzi
+  - mwenge
+  - ggaali
+  - bbaasi
+  # Nature / time
+  - enkuba
+  - omusana
+  - gulo
+  - kiro
+  - mwaka
+  - nnaku
+  - saawa
+  - ganda
+  - kola
+
+# -----------------------------------------------------------------------------
+# MORPHEME_numeral
+# Cardinal numbers 1–10 plus 100 and 1000.
+# In Luganda numerals agree with noun class; these are the stems.
+# -----------------------------------------------------------------------------
+
+MORPHEME_numeral:
+  - emu
+  - bbiri
+  - ssatu
+  - nnya
+  - ttaano
+  - mukaaga
+  - musanvu
+  - munaana
+  - mwenda
+  - kkumi
+  - igana
+  - lukumi
+
+
+# -----------------------------------------------------------------------------
+# MORPHEME_adjective_stem
+# High-frequency adjective and quality roots.
+# Like numerals these agree with noun class via prefix.
+# -----------------------------------------------------------------------------
+
+MORPHEME_adjective_stem:
+  - rungi
+  - nene
+  - tono
+  - wanvu
+  - mugulumivu
+  - gumu
+  - wewu
+  - yonka
+  - bisi
+  - kakalu
+  - gagga
+  - wavu
+  - lamba
+  - ddungu
+
+# -----------------------------------------------------------------------------
+# MORPHEME_cultural_compound
+# High-frequency Luganda compounds and culturally-anchored words that resist
+# decomposition into shorter morphemes — treating them as atomic tokens is
+# more efficient than splitting.
+# -----------------------------------------------------------------------------
+
+MORPHEME_cultural_compound:
+  - obuntu
+  - obulamu
+  - obuwangwa
+  - amagezi
+  - obugagga
+  - ekitiibwa
+  - omutima
+  - emmotoka
+  - ekitabo
+  - abaana
+  - omwana
+  - omuntu
+  - abantu
+  - obwoba
+  - empisa
+  - ekikolwa
+  - omukwano
+  - obusolo
+  - obulimi
+
+# -----------------------------------------------------------------------------
+# MORPHEME_corpus_stem
+# Auto-discovered high-frequency stems — review before committing.
+# -----------------------------------------------------------------------------
+
+MORPHEME_corpus_stem:
+  - ssomero
+  - vumenti
+  - somesa
+  - manyi
+  - njawulo
+  - some
+  - somero
+  - riza
+  - mero
+  - nyizibwa
+  - zino
+  - menti
+  - gera
+  - zadde
+  - ssome
+  - zibwa
+  - mesa
+  - rira
+  - gendere
+  - yinza
+
+# -----------------------------------------------------------------------------
+# MORPHEME_corpus_root
+# Auto-discovered high-frequency bare roots — enables productive inflection.
+# -----------------------------------------------------------------------------
+
+MORPHEME_corpus_root:
+  - yit
+  - many
+  - kyal
+  - nger
+  - tond
+  - kol
+  - zimb
+  - sul
+  - ker
+  - ler
+  - kub
+  - sing
+  - sasul
+  - fumb
+  - nsong
+  - mbeer
+  - taat
+  - maam
+  - mwan
+  - mmer
+  - katond
+  - mukaag
+  - munaan
+  - mwend
+  - kabak
+  - nkaag
+  - kinaan
+  - bugand
+  - malayik
+  - minisit
+  - yakuw
+  - mitw
+  - yokaan
+  - ssess
+  - bwenk
+  - yagamb
+  - kiseer
+  - weerez
+  - sanyus
+  - sindik
+
+  - kaboola  # ulcers in the mouth; 
+  - kabootongo  # syphilis  # tertiary syphilis; 
+  - kammunguluze  # giddiness; 
+  - kyeggula  # hollow cough; 
+  - ssenyiga  # cold in the head; 
+  - katuuka  # swollen testicles  # orchitis; 
+  - kabongeera  # sleeping sickness; 
+  - kibongoya  # sleeping sickness  # coma; 
+  - wamala  # itching conjunctivitis probably tranchoma; 
+  - kikerere  # scaly dermatitis; 
+  - kirumi  #human skin disease  # disease of fig trees; 
+  - kizimugulu  #swelling of the legs  # sleeping sickness; 
+  - kiziri  # prolapsed piles  # prolapse of rectum; 
+  - lubyamira  # pneumonia  # very bad influenza; 
+  - lubeerebeere  # mastitis; 
+  - lukonvuba  # incurable disease  # wasting ilness; 
+  - luluummabintu  # gonorrhoea;
+  - lukuumawaka  # chronic illness  # usually gonorrhoea; 
+  - jjulume  # sudden fits of temper  # madness; 
+  - ndezi  # all forms of spontaneous bleeding  # epistaxis; 
+  - mmongoota  # sleeping sickness;
+  - lwakipumpulu  # cattle tripanosomiasis.
+
+
+  - nnamuukukulu # monster; 
+  - ttimba # python; 
+  - bbowa # jackall;
+  - goonya # crocodile; 
+  - kabogolole # monster; 
+  - lukumbi # monstrous wild beast; 
+  - lubwa # animal like 'jackal; 
+  - nnawoluvu # chameleon;
+  - nnamulimi # ant bear; 
+  - nnamunnungu # porcupine; 
+  - nnamukasa # monkey grivet; 
+  - ssewagaba # black mangabeу monkey;
+  - ssunyulubeebe # type of lizzard; 
+  - nnabankokola # preying mantis;
+
+  - nnagawe # patas monkey;
+  - jjule # washing bear;
+  - kunguvvu #whyday fish;
+  - nnandere # type of tylapia;
+  - kassulubana #elephant-snout fish;
+  - mbegedde # fish with long tubular snout;
+  - mukene # silvery fish;
+  - muguya # young lung fish;
+
+  - nnamunswa  # termite; 
+  - nnabe  # small red ant said to eat termites; 
+  - nnamunkanga  # dragon-fly; 
+  - nnabangogoma  # green grasshopper; 
+  - nnabubi  # spider; 
+  - nnamugoya  # blind worm;
+  - nnabeefunya  # type of small catterpillar; 
+  - munyama  # kind of ant; 
+  - munyeera  # minute kind of ant; 
+  - kawawa  # gadfly;
+  - kaasa  # travelling black soldier ant; 
+  - kabalankoma  # variety of wasp; 
+  - kadoma  # small wild bee; 
+  - lusejjera  # swarm of young locusts; 
+  - nsingisira  # small insect in millet;
+  - ssemukuto  # insect like cricket which emits burning secretion; 
+  - muyizzitasubwa  # mason wasp; 
+  - ssekirembe  # large ant which makes its home in firewood; 
+  - kyebereka  # parasite;
+  - ssekesa  # kind of centipede; 
+  - ssungulubeebe  # type of lizzard  #   small and pale in colour; 
+  - kasennyanku  # insect which makes  cocoon like a tiny bundle of firewood and lives inside it;
+  - ssiga  # centipede; 
+  - wakka  # large black ant with strong unpleasant smell an poisonous bite; 
+  - kidoma  # a great quantity  #   mpotwe  # something enormous; 
+  - ssinziggu  # huge pile;
+  - nnamunkukkumbu  # crowd.
+
+  - kisosolye  # bulbul; 
+  - kaamukunkulu  # small dove of dark gry colour; 
+  - bbuka-mugogo  # brown bird hardly as large as a thrush; 
+  - magga  # black-shouldered kite; 
+  - nnakinsige  # brown grass-finch; 
+  - munyuli  # blue starling; 
+  - sseddindi  # small black cormorant; 
+  - nnamwebe  # sparrow; 
+  - nnamunnoona  # white shouldered crow; 
+  - kijjoga  # common brown bird about the size of a weaver; 
+  - wonzi  # long crested hawk eagle;
+  - ssemirindi  # siaall black cormorant; 
+  - ssekanyolya  # grey heron; 
+  - ssekoko  # turkey; 
+  - nnaali  # crested crane; 
+  - mukanganka  # peahen.
+  - nnabambula # plant causing blisters; 
+  - kibugga # nettle;
+  - kasalabakesi # climbing plant giving red dye; 
+  - kattabuteme # tenacious couchgrass; 
+  - kawule # creeper with short curved thorns; 
+  - kanywa-musenke # shrub whose leaves taste of oxalic acid; 
+  - ganda # plant whose juice is obnoxious to termites;
+  - kafumita-bagenge # type of prickly creeping plant; 
+  - ddoodo # kind of spinach; 
+  - mmulukulu # plant used for healing sores;
+  - nnakitaddabusa # kind of stinging nettle; 
+  - nnakati # type of spinach; 
+  - nnakasuga # type of plant used as vegetable;
+  - sseziwundu # herb used to heal sores; 
+  - sserinyabi # type of cactus plant; 
+  - ssere # weed whose seed stick to clothing;
+  - nnasamba # type of stinging plant.
+
+  - ggiri # malice; 
+  - kalumanywere # difficulty; 
+  - kaloddo # heaviness; 
+  - kaloboli # extravagance; 
+  - kafulu # term of abuse;
+  - kipeccu # prodigy; 
+  - sano # calamity resulting in quarrels;
+  - nnalugumbya # death; 
+  - nnakinku # marvel of cleverness;
+  - nnabuguma # great heat; 
+  - mutemampola # hunger; 
+  - ngobya # deceit; 
+  - ttembo # folly; 
+  - nnasisi # affluence; 
+  - nnawalyanga #death; 
+  - nnamunigina # solitude; 
+  - nnamukisa # good luck;
+  - ssebitalo # phenomenon; 
+  - nnamuyanga # spontaneous fire;
+  - kyefuula #nuisance;
+  - kasiibulo # farewell; 
+  - kalindabazaana # twilight; 
+  - kazimeera # dark place; 
+  - masane # a wonder;
+  - nnakibengeyi # grass fire.
+
+
+  - ggiri # malice;
+  - kalumanywere # difficulty;
+  - kaloddo # heaviness;
+  - kaloboli # extravagance;
+  - kafulu # term of abuse;
+  - kipeccu # prodigy;
+  - sano # calamity resulting in quarrels;
+  - nnalugumbya # death;
+  - nnakinku # marvel of cleverness;
+  - nnabuguma # great heat;
+  - mutemampola # hunger;
+  - ngobya # deceit;
+  - ttembo # folly;
+  - nnasisi # affluence;
+  - nnawalyanga # death;
+  - nnamunigina # solitude;
+  - nnamukisa # good luck;
+  - ssebitalo # phenomenon;
+  - nnamuyanga # spontaneous fire;
+  - kyefuula #nuisance;
+  - kasiibulo # farewell;
+  - kalindabazaana # twilight;
+  - kazimeera # dark place;
+  - masane # a wonder;
+  - nnakibengeyi # grass fire.
+
+  - kasiirira # small hut;
+  - kyewangula # recluse; 
+  - bbugwe # strong pallisade; 
+  - wankaaki # main gate
+  - wansanso #  at the back; 
+  - nnakasatwe #third cloth of bark-cloth tree;
+  - nnakabirrye # second stripping of bark-cloth;
+  - ssezzizi # top roll of rees on fence;
+  - nnakabanda # kind of fence laced together with bark;
+  - kwete # beer made from maize;
+  - kyaki #coarse mat from palm leave;
+  - kimote # rich # red bark-cloth of Sangobay area;
+  - kyerindwa # thing of which one takes special care;
+  - kyassanga # cracks and fissures as in tertiary jaws;
+  - kyekwasa # something provisional; 
+  - kltembejja # clot;
+  - kirenge # bamboo wistle; 
+  - kirema # variety of pearl; 
+  - kaggogo #childrens game;
+  - kasiikolindo # dung of birds; 
+  - ggogolimbo #rubbish heap;
+  - kaamudiba # scraping of flesh from hide;
+  - kalasano # pother; 
+  - sserumbete # european drum; 
+  - mwasanjala #stony road; 
+  - nnamuziga # ring.
+  
+  - оmuttampindi # (Albizzìa coriacea) Tree used for fumigating. Its bark is also chewed or decocted as a cough medicine.
+  - оmutoogo # (Dalbergia milanoxylon) Ebony tree from which walking sticks are made.
+  - omuteete # (Allophylus subcoriaceus) Tree from which knife handles are made.
+  - оmusizi # (Maesopsis eminii) Timber tree with useful light # hard wood # often used in place of Podo.
+  - оmusaali # (Mimusops ugandensis. Garcinia buchanii) Forest tree up to a 130 feet. It has a thick ever­ green crown casting dense shade. Its fruit is orange yellow and about 1 inch in diameter. Thewood is brown or pinkish # hard # difficult to saw # but planing and turning well and taking a good polish.
+  - omunyenge # (Xanthoxylon) Tree with greyish brown wood.
+  - omunyamassi # (Apodytes dimidiate) Evergreen forest tree up to 70 feet and growing in Buddu. The wood is very hard # perishable # easy to saw and plane but liable toborer attack.
+  - omunyama # (Khaya anthotheca) Tree with light brown wood.
+  - omunaazi # (Parinari excelsa) Evergreen forest tree growing up to a 150 feet. The wood is hard # resistant to damp and durable in ground. 132
+  - omulungisanvu # (Syzygium guiñéense # syn Eugenia guineensls) Tree with pale heavy durable wood.
+  - omululu # (Chrysophyllum albidum) Forest tree up to a 120 feet. The wood is brownish white easy to saw and plane and nailing well. It takes a fine polish.
+  - omululuuza # (Vernonia amygdalina) Shrub also called iron weed # giving incense. Its leaves are pulped in water producing medicine to cure colic pains. Its branchlets are resistant to termites and are useful as stakes for lining out plantations.
+  - omulirira # (Harungana madagascariensis) Shrub or tree up to 40 feet with small orange or brownish fruit. Its wood is pinkish-yellow and oozes reddish sap. The wood is light in weight and the tree is reputed tolmprove soil. It grows on banks of rivers in sandy places.
+  - omulindi # (Herminiera elaphroxylon) Ambatch tree. It grows up to 20 feet # in water or on the lake margin or in swamps. It has very light wood used for floats and spears in fishing.
+  - оmukuzannume # (Warburgia ugandensis) Tree with greyish wood.
+  - omukusu # (Uapaca guineensls) Ssese forest tree up to 60 feet. The wood is pale red with a silvery grain. It is durable easy to work and suitable for carpentry. It is said tobe good firewood and especial­ly makes good charcoal. 133
+  - omukoole # (Dombeya тикоі ) Tree with light wood # smooth grained.
+  - omukooke # (Pterygota Sp.Nov) The witch tree of Mubende hill # with white bright yellow sap-wood.
+  - оmukongoliko # (Accada campylacantha) African cutch # fast growing # flat topped # giving good gum.
+  - оmukebu # (Cordia Abyssinica) Tree with brown wood # taking polish well and very suitable for cabinet work.
+  - оmukapa # (Clitandra orientalis) Kind of rubber tree.
+  - omukanaga # (Hymenocardia acida) Busoga tree with very hard wood suitable for making pestles and mallets for beating out bark-cloth.
+  - оmuduudu # (Thylachium africanum) Tree of which the leaves are used tomake poison for an ordeal.
+  - omugavu # (Albizzia coriaria) Tree with very dark # hard wood # deciduous and growing up to 60 feet in savannah and 130 feet in the forest. Fragrance is imparted tobark-cloth when fumigated with the smoke produced by the wood of this tree. 134
+  - omuseenene # (Podocarpus gracilior) Evergreen forest tree growing up to 100 feet. The trade name is Podo or East African yellow wood. It yields soft and straight grained wood # easy to work and it is used for furniture and joinery.
+  - omusasa # (Sapium ellipticum) Tree # usually growing 40 to 50 feet high. It is somewhat reminiscent of birch in habit. The wood is hard # used for anvils on which bark-cloth is beaten but it is not durable when placed in the ground.
+  - оmuyinya # (Accada Xiphocarpa) Gregarious # flat-topped tree to 50 ft. Crown obconical spreading # the bole dividing into a number of more or less equalsized limbs which rise steeply to the same height. The tree provides very tough brown wood for general purposes.
+  - оmutwetwe # Any tree from which knife handles are made
+  - omutwalabafu # (Ekebergia senegalensis) Tree to 90 ft in savanna and on the edge of forest. The crown is rounded and branches are pendulous. The tree is used for carrying dead bodies. 135
+  - omusuga # (Steganthus welwitschii) Forest tree up to 90 ft. Crown small. Bark pale grey to nearly white. Its trade name Is Elgon Olive and it is used for cabinet making and heavy furniture. The wood is very strong moderately durable # resistant to termites # not easy to saw and plane owing tolts hardness. It takes nails very well when green but resists them when dry. Polishes well and stains successfully.
+  - omumuli # (Holoptelea grandis) Light-demanding deciduous forest tree up to 120 ft. Wood white # moderately hard # planing and nailing well # sawing easily # difficult to split # liable to termite attack and suitable for indoor carpentry.
+  - omulundulundu # (Antiaris toxicarla) Deciduous tree up to 150 ft. The bark yields a strong white cloth # but is regarded in Buganda as inferior to true barkcloth.
+  - omulundu # (Celtis brownii) Evergreen understorey tree to 70 ft. Bark smooth # grey-green to olive brown. Tree from which shields are made.
+  - omukuzannyana # (Klainedoxa gabonensis) Large evergreen forest tree to 150 ft with a very - thick crown which is often umbrella-shaped in old trees. Very durable wood but too hard for general use.
+  - оmukusakusa # (Strychnos mitis) Tree whose bark is used as a rope. The wood is hard and difficult to work.
+
+  - mbuzi # goat; 
+  - lubuzi # a tall thin goat.
+  - linyo # tooth; 
+  - lunyo # a long narrow tooth.
+  - nkota # a bunch of plantains; 
+  - lukota # a long poor bunch.
+
+  - оlujongojongo # person as thin as a lath; 
+  - olufulube # multitude; 
+  - olukokobe # one who outstays his welcome;
+  - оlukongoolo # he pointed him out; 
+  - olula # family;
+  - olulyo # kindred family; 
+  - oluliri # the whole company;
+  - оluse # species # family; 
+  - olusajjálala # flabby man weakling; 
+  - оluboozi # chatterbox; 
+  - olunsunku # he has given me the slip; 
+  - oluseregende # large family; 
+  - olutikko # chief; 
+  - оlugaaya # person standing to swing his leg over the head of somebody sitting in order to render him powerless; 
+  - оlubasi # big stout man; 
+  olwana # tall slender child; 
+  - оlufufugge # a very frail person; 
+  - оlugologombo # gang # mob; 
+  - оlugana # crowd.
+
+  - olwatiiti # rectum; 
+  - olwoya # a hair; 
+  - оlupa # lower jaw;
+  - оlususu # skin; 
+  - оluta # distance from thumb t
+  - olittle finger; 
+  - оlutagajjo # wide-mouthed; 
+  - olutegetege # tendon at back of knee; 
+  - оluwago # bladder; 
+  - oluwanga # jawbone of dead person; 
+  - оlubiriizi # rib; 
+  - olulira # umbilical cord; 
+  - оlukowe # eyelash; 
+  - olukiiya # edge of shaven patch on head; 
+  - оlukinyikinyi # small intestine; 
+  - оlukokola # elbow; 
+  - оlukambulizo # dried up breasts; 
+  - оlukanyanga # deep wrinkle on skin; 
+  - оlukende # thin waist; 
+  - olugugumbulo # rib; 
+  - оlugongo # spine; 
+  - olunywa # tendon achules;
+  - оlufuuzi # lock of hair; 
+  - оlugalo # finger; 
+  - olubuto # stomach # womb; 
+  - olunwe # index finger.
+
+  
+  - olumamya # skin rash; 
+  - olumekeka # aching bonepains;
+  - olugubanguba # good health;
+  - oluzaala # childbirth;
+  - olizzizzi # discharge after childbirth; 
+  - olwoka # any internal pain; 
+  - oluyimbiro # chronic bronchitis; 
+  - oluyóla # cutting on body for tribal marks; 
+  - olusomyo # swelling and pain in fingers; 
+  - oluserenguzi # dysentry; 
+  - olusola # rash;
+  - olutiko # goose-flesh; 
+  - oluwaata # rheumatism; 
+  - olukusense # measles; 
+  - olukwagulo # scratch; 
+  - olukya # stiff neck;
+  - olukuku # skin disease; 
+  - olukoligo # asthma; 
+  - olukoloboze # scratch; 
+  - olufuba # bronchitis; 
+  - olunubbi # dermatitis;
+  - olubale # wound.
+
+
+  - olumokko # long discussion; 
+  - oluzungu # european language;
+  - olunyolo # language of Bunyoro; 
+  - olunyankole # language of Ankole; 
+  - oludikya # back-slang spoken by children;
+  - olugambo # mere talk; 
+  - olufumo # legend; 
+  - oluganda # language of the Baganda; 
+  - olugero # saying # story; 
+  - olukwedenge # long winded speech; 
+  - olulimi # tongue # language; 
+  - olugano # story.
+
+  
+  - olusaala # type of tree  for making shafts of spears it is very tall and slender; 
+  - olusa # marshy grass; 
+  - olujjula # climbing plant; 
+  - olugumaguma # shrub from which good canoes are made; 
+  - olukenke # dense shrub of brambles; 
+  - olukenene # wild raspberry stem; 
+  - olukanaga # type of tree with sharp thorns; 
+  - olukobe # type of сгeeрer; 
+  - oluko # cutting or chip of sweet potato vine; 
+  - olukindu # wild date palm;
+  - olukikimbo # type of small tree or shrub; 
+  - olukonzikonzi # kind of tall grass; 
+  - olukoma # palm pole; 
+  - olukolokolo # thorney creeper; 
+  - olukubansi # type of mushroom; 
+  - olukoota # hot tasting type of mushroom; 
+  - olulanda # trailing shoot;
+  - olulago # reed of bulrush; 
+  - olukusakusa # bark of tree;
+  - oluleereetu # plant with hollow stem; 
+  - olusenke # mace reed;
+  - olusansa # palm leaf of wild date palm; 
+  - olusambya # hard wood tree used for hut poles and furniture of all sorts (Markhamia platycalyx); 
+  - olubongo # leave on which tops are spun; 
+  - olusumbwa # kind of lake plant like rushes with tall slender hollow stems and long narrow leaves like grass  favourite food of hippopotamus; 
+  - olubbulo # floating plant; 
+  - oluwomerambuzi # kind of plant grows as weed often in newly dug earth; 
+  - oluwoko # shrub; 
+  - oluwiki # thorney bush; 
+  - oluwerewere # stem of leaf of basket wattle; 
+  - oluwawu # rough leaf of ficus exaspérala; 
+  - oluwaayi # strychnia plant;
+  - oluvunvu # a fibre giving plant; 
+  - oluwa # edible herb;
+  - olutungotungo # wild plant like sesame; 
+  - olutubatuba # strip 223 of bark cloth tree; 
+  - olutabazzi # creeper found in marshy place; 
+  - olubongo # large leaf; 
+  - olusumbwa # kind of lake plant; 
+  - olusiiti # shrub which bears hard red seeds;
+  - оlunaba # african nutmeg tree (Pycanthus kombo); 
+  - olumuli # reed; 
+  - olumbugu # couch grass.
+  - olujjula # a climbing plant whose tendrils are used as adornment at the celebrations of the birth of twins. Its leaves # crushed in water # are used as medicine to cure colic pains # olujjuliro # decoction of leaves used as a deodorant and as a medicine to cure enlarged spleen in children; 
+  - olukanaga # type of tree with sharp thorns.
+
+  - oluvunyu # maggot; 
+  - oluwe # hen roost; 
+  - oluwumo # ringworm;
+  - olubende # pigmy field mouse; 
+  - olubobya # type of small inedible termite; 
+  - olusanyi # black and white fowl;
+  - olukunyukunyu # lesser bombili; 
+  - lukennembi # large type of ant; 
+  - olugunyu # large mongoose; 
+  - olugave # scaly ant-eater; 
+  - oluga # caul; 
+  - olubulugu # puppy; 
+  - oluunya # kind of fish; 
+  - olukonkonamuti # wood pecker.
+  - olubanda # breast of a horse; 
+  - oluyonkante # bustard #
+  - olusoove # small black cormorant or darter; 
+  - olusinga # hair of tail of elephant.
+  - olugingirima # horse's mane; 
+  - oluwufa # trail of beasts;
+  - oluwoonzi # comb of cock; 
+  - oluwombo # bundle of meat;
+  - oluwlngi # barrier of traps for animals; 
+  - olutuula # net for catching small animals; 
+  - olatente # basket like butter­ fly net for catching ssami; 
+  - oluteete # large net for catching lake fly; 
+  - olutayo # oblong trap for minale fish;
+  - olusika # skewer of grasshoppers; 
+  - olulaanu # trail of a slug.
+
+
+  - оlumbe # death; 
+  - olunderebu # stupidity; 
+  - olunkulu # boasting manner; 
+  - olwayo # clamour; 
+  - olwebeeya # multitude;
+  - olwegeenya # great quantity; 
+  - olweje # abundance;
+  - olwetumbo # presumption; 
+  - olwogo # uproar; 
+  - olubugumu # heat;
+  - olwetatankirizo # inconsiderateness; 
+  - owano # sham friendship; 
+  - oluyogo # din of applause; 
+  - oluyombo # strife;
+  - olusonso # spitefulness; 
+  - oluso # odour of the body;
+  - olusunsuntu # familiarity; 
+  - olutabaalo # campaign; 
+  - olutale # glistening; 
+  - oluteerezo # slowness; 
+  - olutentezi # flatness;
+  - olunso # long glance; 
+  - oluwalo # public labour;
+  - oluwazo # hard exacting nature; 
+  - oluwl # smack # slap; 
+  - oluwugge # smell of new calabash; 
+  - oluwujja # thirst # passion;
+  - oluyeeke # immensely long court case; 
+  - olube # cry of joy;
+  - olubengo # great heat; 
+  - oluboobooye # great lenght;
+  - olusajja # virility; 
+  - oluiere # indiscretion; 
+  - olumagga # interval; 
+  - olukusa # permission; 
+  - olukwa # trick; 
+  - olulanga # fame; 
+  - olukulukumbo # odour of sweat; 
+  - olukamu # improvement;
+  - olukanda # ceremony at birth of twins; 
+  - olugulungujjo # unevenness; 
+  - olujeemojeemo # rumour; 
+  - olujoogo # defiance;
+  - olukaayana # trouble; 
+  - olugenderezo # without ceasing;
+  - olugono # pugnacity; 
+  - olufunbanja # great debt; 
+  - olubugumu # heat; 
+  - olubwa # misfortune; 
+  - oludda # direction; 
+  - olunyiigo  #complaint; 
+  - olusa # permission.
+
+
+  - olunnya # trench; 
+  - olwako # ravine; 
+  - olwaniko # airing ground; 
+  - olwereere # clearing; 
+  - olufufugge # dusty soil;
+  - oluggya # courtyard; 
+  - olukalu # dry land; 
+  - olunnyu # barren soil; 
+  - olukoola # desert; 
+  - olukulukumbi # ridge; 
+  - olukooto # incline of hill; 
+  - olukuusi # red earth; 
+  - olubiri # king's enclosure; 
+  - olubibiro # dam of earth; 
+  - oluwompogoma # deep precipice; 
+  - oluwangi # furrow; 
+  - oluwangiwangi # border of cultivation; 
+  - oluwajjangwa # oblong cavity; 
+  - oluteega # popliteal space; 
+  - olutendera # rising ground; 
+  - oluseta # grassy plain; 
+  - olusenyi # plain; 
+  - olubalama # shore;
+  - olubandaasi # spread out village;
+  - olume # mist; 
+  - olunywankoko # light shower of rain;
+  - olukubakuba # drizzling rain; 
+  - oluwandaggirize # drizzle;
+  - оlutonnyezi # shower of rain; 
+  - olusununu # trickles of rain down tatch.
+
+  
+  - oluyulu # kind of rush used for ornamenting shields;
+  - olunnyo # stretcher; 
+  - oluzzi # well; 
+  - oluga # cane or stick;
+  - olugo # fence of pen; 
+  - olunyata # glowing embers; 
+  - olunyere # wire; 
+  - olupanka # round piece of metal; 
+  - olupapula # long piece of paper; 
+  - olunyago # shaft of spear; 
+  - oludangadi # shallow trough; 
+  - olubyabya # basin out of shape;
+  - olubumbiro # potter's wheel; 
+  - olubugo # bark-cloth;
+  - olubugabuga # night jar; 
+  - olububi # cream scum; 
+  - olugali # tray or flat basket for sifting corn; 
+  - olugaaga # bracelet of copper wire; 
+  - olufuvu # sash of bark-cloth; 
+  - olufumbo # vegetable silk; 
+  - olukaguzo # pipecleaner; 
+  - olujegere # chain; 
+  - olugoye # cloth; 
+  - olukato # stiletto; 
+  - olukangaga # frame on which bunches of sesame are dried; 
+  - olukampa # stacking; 
+  - olukoba # belt; 
+  - olukoni # pipe-stem; 
+  - olukukku # piece of firewood; 
+  - olukwansi # belt of beads; 
+  - olumaka # rope stretched across river; 
+  - oluiere # string of harp;
+  - olusekeso # tube; 
+  - olusekess # long bundle of firewood;
+  - oluseke # tube; 
+  - olusamba # iron ring; 
+  - olubobbo # a basket from which the bottom has fallen out; 
+  - oluwijja # anvil of stone; 
+  - oluwagaliro # whetstone; 
+  - oluweera # garment of dressed skins; 
+  - olutitti # thin long stick; 
+  - olutiba # wooden bowl; 
+  - oluti # peg; 
+  - olutambi # lamp wick; 
+  - olutafuka # sausage shaped calabash; 
+  - olusolobyo # long shaft carrying curved knife; 
+  - olusindirizo # ramrod; 
+  - olusinda # bead;
+  - olusunbo # peg or cord for hanging things out of reach of rats; 
+  - olubanyi # scaffolding; 
+  - olubango # wood of spear shaft; 
+  - olubale # fishing rod; 
+  - olubalaza # verandah;
+  - olubaawo # board; 
+  - olwebagyo # cash; 
+  - olubaku # coffee- drying machine; 
+  - olwanbalizo # sling; 
+  - olwokyo # red-hot iron; 
+  - olweyo # broom; 
+  - olwendo # ladle; 
+  - olwala # nail #
+
+  - olukenge # royal talisman;
+  - olujjuliro # place where food is spread; 
+  - olukaaga # six hundred; 
+  - olukalabule # toomuch salt or sugar; 
+  - olugando # journey; 
+  - oluggi # door; 
+  - oluggyo # large piece of broken pot; 
+  - olugo # fence of cattle pen;
+  - olugoba # forward line; 
+  - olufunyiro # fold in cloth;
+  - olubungo # dung-hill; 
+  - olubungubungu # break of day;
+  - olukoda # fold; 
+  - olukisa # talisman; 
+  - olukingirizi # edge border; 
+  - olukindo # seam in cloth;
+  - olukiiko # audience hall; 
+  - olunkoole # dottel; 
+  - olukono # lean on palm with an arm outstretched; 
+  - olukomera # fence; 
+  - olukoloddoli # long and thin; 
+  - olukunkumuli # cascade; 
+  - olukungu # collective gift of food made to the king; 
+  - olukumi # one thousand;
+  - olukulo # scraping of hide in dressing; 
+  - olukukunzi # dust;
+  - olukugiro # hem in garment; 
+  - olukyala # round of visits;
+  - olulembe # edge of bark-cloth garment as cut for folding;
+  - olusegere # very close to the side; 
+  - olusebenju # outside wall of house; 
+  - olusanvu # seven hundred; 
+  - olusambaggere # kick; 
+  - olubosi # precipitate at bottom of beer; 
+  - olubengo # lower grindstone; 
+  - oluwunguko # anything cut short;
+  - oluwiira # grass fire; 
+  - oluwasiwasi # a gigantic thing.
+
+  
+  - akawere # infant # small baby; 
+  - akasumagizi # pigmy;
+  - akasimbaazi # name for a male child # slow in growth but well built and handsome; 
+  - akasolya # head of clan;
+  - akabirinage # small person with a neat figure; 
+  - akabirigi # very short person; 
+  - akaberegenya # young nipper; 
+  - akabbandu # mad-cap; 
+  - akaana # small child; 
+  - akambayaaya # a very impertinent child; 
+  - akakikobe # one who outstays his welcome;
+  - akakonkomi # foetus in early months; 
+  - akakakajja # withered old person.
+  - akatiiri # rectum; 
+  - akawondoliro # anus; 
+  - akasondamumiro # uvula; 
+  - akataago # spleen; 
+  - akasimu # nerve; 
+  - akanyinyiri # falsetto; 
+  - akabina # hollow of the back; 
+  - akabaatiro # perineum of male; 
+  - akabakko # cheek-bone; 
+  - akabebenu # cartilage; 
+  - akabubabuba # corpuscle; 
+  - akabubi # membrane;
+  - akabuno # roof of mouth; 
+  - akabutobuto # large intestine;
+  - akadondi # tip of finger; 
+  - akakongovvule # anklebone;
+  - akamwa # mouth; 
+  - akalulwe # gall-bladder; 
+  - akalira # dried umbilical card; 
+  - akalindaminyira # groove in centre of up-per lip; 
+  - akalevu # chin; 
+  - akanyinyi # urethra; 
+  - akanenero # cheek-bone.
+
+  
+  - akasanga # swelling of the neck; 
+  - akateetera # faint breathing; 
+  - akatulututtu # pimple; 
+  - akatuuka # swollen testicles; 
+  - akatuulituuli # blister; 
+  - akawere # scabies;
+  - akawulukutu # swelling in the ear; 
+  - akazimirizo # spasm of pain; 
+  - akassikonda # hiccups; 
+  - akatakkuluze # frayed skin near the finger nail; 
+  - akasekere # sty in the eye;
+  - akasamamya # bloodlessness of the lips; 
+  - akafuuwuuku # breathlessness; 
+  - akakukufa # corn on toe; 
+  - akamiro # caking of breast in infant; 
+  - akanyata # tongue-tie in infants;
+  - akanojje # pimple; 
+  - akandu # childish stomachache;
+  - akabaata # syphilitic rash on nose; 
+  - akaberebenje # asyphilitic eruption; 
+  - akalogojja # delirium; 
+  - akafusa # tuberculosis; 
+  - akagere # menstruation; 
+  - akagonja # secretion.of eyes; 
+  - akaddaliddali # tumor on finger;
+  - akajongo # dried gum in the eye; 
+  - akakono # consumption;
+  - akakololo # cough; 
+  - akalasira # very weak pulse.
+
+  - akagiri # kind of wild plant; 
+  - akafansonyi # sensitive plant; 
+  - akalo # small oar of millet; 
+  - akanyereketo # shrub (Physalis) The red and white seeds called nsiiti are favourite playthings for children; 
+  - akansambwe # fibre of pavonia species; 
+  - akakanso # small saxifragous shrub with edible berries whose twigs are used as toothbrushes (Rhus incana); 
+  - akakala # osier plant; 
+  - akajereje # small kind of bean; 
+  - akakonsokonso # tree with edible fruits;
+  - akakongoliro # stalk of 'ntula'; 
+  - akalemanyovu # a small tree (Gardenia thurnbergia); 
+  - akalandalugo # creeping plant fond of old cattle kraals (hence the expression: ssewaali ente # olabir
+  - akalandalugo # where the cows have been you find K ) ; 
+  - akakumirizi # plant used for making brooms; 
+  - akakuli # type of grass in Mawokota; 
+  - akadaali # asparagus fern; 
+  - akaboga # kind of fig tree (Ficus congensis); 
+  - akabira # thicket; 
+  - akabbula # water lily;
+  - akabalira # tree used for making mortars in which flour is ground (Ficus capensis); 
+  - akasanso # top of a tree;
+  - akasaana # thorny shrub the bark of which makes red dye;
+  - akasigirirwa # very small seed; 
+  - akatanga # climbing gourd plant; 
+  - akasuuwe # type of lake plant having strong stems attached tobulbous roots; 
+  - akassukussuku # type of mushroom growing in plantain gardens; 
+  - akayuuklyuuki # type of mint with flower like heliotrope; 
+  - akayindiyindi # small butterbean; 
+  - akaweke # small seed # 
+  - akawawa # type of edible mushroom; 
+  - akawakatirwa # shoot on plant;
+  - akawakata # small sheaf; 
+  - akavunvu # variety of shrub with long taproot making it difficult to uproot. Its coarse leaves are made into a concoction and applied to sores; 
+  - akatuugo # fan shaped borassus palm; 
+  - akatunkuma #very bitter wild fruit; 
+  - akatunku # edible red berry fruit; 
+  - akatungulu # union; 
+  - akatundwe # edible flower of gourd; 
+  - akatiko # button mushroom; 
+  - akati # little tree;
+  - akatengotengo # variety of plant with fruit like egg-fruit; 
+  - akateketwe # foliation.
+
+  
+  - akasalu # pratincole bird; 
+  - akatugu # sand-fly; 
+  - akatulume # banded mongoose; 
+  - akawuka # general term for creeping things  insects etc; 
+  - akawundo # insect eating bat;
+  - akawuuwo # tail of reptile; 
+  - akawuuzi # weevil which feeds on potatoes; 
+  - akayaawe # wild-cat; 
+  - akayamba # small fish in lake; 
+  - akayanzi # grasshopper said tobe delicious to eat; 
+  - akayongo # sparrow; 
+  - akayozi # kangaroorat; 
+  - akayuki # swarm of bees; 
+  - akazingirizi # kind of small gnat; 
+  - akataasa # small brown lake bird; 
+  - akataayi # swallow; 
+  - akaseese # fire-tailed finch; 
+  - akasekerezi # insect rather like blind ant;
+  - akasennyanku # insect wich makes a cocoon like a tiny bundle; 
+  - akasikisa # centipede; 
+  - akasimba # civet cat;
+  - akasimbaazi # smallish brown bird; 
+  - akasisi # minutely small insect; 
+  - akasogobe # premature calf; 
+  - akasolo # domestic animal; 
+  - akasaalu # small lake bird; 
+  - akasagisagi # kind of small ant nesting in trees; 
+  - akasanke # tiny fire finch; 
+  - akamyu # hare; 
+  - akafubutusi # small water fowl;
+  - akacaaka # small young locust; 
+  - akabalaga # striped grass rat; 
+  - akabu # tiny fly haunting ripe bananas; 
+  - akabowa # bat-eared fox; 
+  - akabulankoma # kind of insect; 
+  - akabulugu # puppy; 
+  - akabwa # small dog; 
+  - akaduli # fly used as bait;
+  - akafubutusi # small black waterfowl; 
+  - akangali # weazel;
+  - akagina # nit; 
+  - akagubi # quail; 
+  - akagugumusi # black capped finch; 
+  - akakolwa # banded mongoose; 
+  - akalenga # tree frog;
+  - akalende # mud fish; 
+  - akalanga # small beetle-like insect;
+  - akalaalankoma # kind of insect; 
+  - akakulwe # tadpole #
+  - akakubampanga # kestrel # sparrow-hawk; 
+  - akamunyi # yellow billed african kite; 
+  - akalussejera # young locust;
+  - akalumabalunda # type of small lizard-like venomenous reptile; 
+  - akaloolo # tiny fowl; 
+  - akalimirwa # kind of monkey; 
+  - akaliga # small lamb; 
+  - akaanunansubi # sun-bird;
+  - akalerwe # small sea bird.
+
+  
+  - akadoobe # small loin cloth; 
+  - akajumbi # kilt of bark- cloth worn by hunters; 
+  - akanyere # bracelet of twisted wire; 
+  - akaloosa # scent; 
+  - akalekeereke # perfume; 
+  - akakoba # small belt or strap; 
+  - akajegere # necklace; 
+  - akakansa # kind of bracelet; 
+  - akadangadi # iron necklet; 
+  - akawungu # earlet.
+  - akamweso # razor; 
+  - akamwano # razor; 
+  - akagembe # small spear; 
+  - akagadi # bicycle; 
+  - akaala # small nail; 
+  - akabonge #  spinning top; 
+  - akajugo # penholder; 
+  - akajagolo # small thin lance used by sorcerers; 
+  - akajegejege # cent; 
+  - akambe # knife; 
+  - akaliiso # plumb line; 
+  - akaasaale # arrow # 
+  - akaso # small knife.
+  - akadyeri # hammock; 
+  - akabiga # hole in the earth used as an oven; 
+  - akatuntumu # bandage around the eyes; 
+  - akabooya # tuft of reeds; 
+  - akabwa # line of reeds at lower edge of the roof of a hut; 
+  - akakyu # chaff of floating malt; 
+  - akalagala # small leaf; 
+  - akaleebo # sap of fig tree which comes out through beating in making bark-cloth; 
+  - akadundu # plug of tobacco; 
+  - akagoogwa # sisal fibre; 
+  - akagoye # thread;
+  - akakudo # roll of palm leaf fibre; 
+  - akangodera # folding screen; 
+  - akabendobendo # roll of reeds under the edge of a roof; 
+  - akalo # grain of millet; 
+  - akayungo # stilt;
+  - akawulira # charm # antidote for snake-poison.
+  - akalere # string of drum; 
+  - akalere # small flute;
+  - akajjejjerebu # dancing doll; 
+  - akadingidi # one-stringed fiddle; 
+  - akakunizo # snare; 
+  - akakunku # snare; 
+  - akamasu # rat-trap; 
+  - akabigo # fish-trap of reeds; 
+  - akasambajja # bell-shaped fish trap; 
+  - akasereekerero # small basket - like trap for catching fish; 
+  - akasumbyo # conical fish- trap; 
+  - akatiribiri # mandoline; 
+  - akatimba # mosquito net.
+
+  - akakerenda # pill; 
+  - akalegete # very small packet tightly tied; 
+  - akakunkumuka # crumb; 
+  - akakomwakomwa # crumb; 
+  - akamya # spot; 
+  - akanyikuuli # trifle; 
+  - akamogo # spot #blemish;
+  - akabalabala # little spot; 
+  - akacweka # small part; 
+  - akafu # small insufficient helping; 
+  - akakerenge # a trifle;
+  - akasale # stroke # dash; 
+  - akasirikitu # minute insignificant thing; 
+  - akasennyente # crumb of tobacco; 
+  - akayunyo # thin band; 
+  - akawayi # scrap; 
+  - akatoloboze # speck;
+  - akawumbi # ten million; 
+  - akatabalika # ten million or more;
+  - akasanvu # seven thousand; 
+  - akasiriivu # one hundred thousand; 
+  - akatabalika # countless number; 
+  - akakumi # ten thousand; 
+  - akanaana # eight thousand; 
+  - akakaaga # six thousand;
+  - akakadde # a million.
+
+  - akaboyi # giddiness; 
+  - akeetawulo # exitement; 
+  - akabbalibbali # mad-cap nature; 
+  - akeewaniko # pride; 
+  - akabba # ill-nature;
+  - akabango # madness; 
+  - akagabangu # folly; 
+  - akakukuuzi # grief;
+  - akakule # burst of laughter; 
+  - akakali # burst of laughter;
+  - akamagu # madness; 
+  - akamaaumaau # restlessness; 
+  - akalumira # ill-feeling.
+  - akatomyo # good aim; 
+  - akavvunkano # confusion; 
+  - akawamba # enticement; 
+  - akawoowa # nice smell; 
+  - akawubyo # cheating;
+  - akayifuyifu # rancour; 
+  - akayiiyi # rancour; 
+  - akasunguyira # quick temper; 
+  - akasuususu # warmth; 
+  - akaseera # short time;
+  - akasera # trial # proof; 
+  - akasiriikiriro # interval of silence; 
+  - akanyonyoogano # debate; 
+  - akabanika # protuberance;
+  - akalibbaba # durability; 
+  - akamalizo # finality; 
+  - akanylku # poverty; 
+  - akabi # harm # danger; 
+  - akabonero # sign; 
+  - akacapalo # licence; 
+  - akeedimo # strike from work; 
+  - akabatanya # cause of dissension; 
+  - akabenje # misfortune; а касса # importunity;
+  - akamyozo # hurt; 
+  - akadde # time; 
+  - akafukunga # abundance;
+  - akadubudubu # rancour; 
+  - akafubo # privacy; 
+  - akakyo # time;
+  - akalebule # libel; 
+  - akakodyo # mean trick; 
+  - akajajja # in­solence; 
+  - akajiirurl # vicelike painful grip; 
+  - akakalu # pledge; 
+  - akakanda # a rite performed at the birth of twins;
+  - akakenyera # defect # blemish.
+
+  
+  - akasekeso # small orifice; 
+  - akasenso # hangings from bows for protecting the prow of a canoe; 
+  - akasirikko # rut in the road; 
+  - akasirinza # cinder; 
+  - akamyiriri # versicle;
+  - akasambula # season when fallowed land is prepared;
+  - akasana # spring morning sunshine; 
+  - akannunnansowera # small round wound made in animal; 
+  - akamoome # type of termite hill; 
+  - akalenge # hem of garment; 
+  - akabbiro # second totem of clan; 
+  - akanyigano # press; 
+  - akalumba # stern thwart; 
+  - akalondwalondwa # debris; 
+  - akalulu # draw lots; 
+  - akagobe # point gained in game; 
+  - akalenge # morning mist; 
+  - akatale # market; 
+  - akaswanyu # small whip; 
+  - akasunsu # tuft of hair left unshaven on top of head; 
+  - akasunduba # wrinkle; 
+  - akasongezo # hem of clothing; 
+  - akalikonda # corner of a room; 
+  - akanyomero # corner; 
+  - akasolya # roof of a house;
+  - akasiisira # small hut; 
+  - akasendwe # short post supporting the roof of a hut; 
+  - akasegunsi # place immediately behind the door in 
+  - akiganda # hut; 
+  - akatente # ridge of earth before the door of a hut; 
+  - akayu # small hut; 
+  - akayisanyo # crossing each other; 
+  - akayaaye # partition in porch of a hut; 
+  - akawazo-maziga # cooling of the fire-stones;
+  - akawatwa # indentation.
+
+  - obwanga # forehead; 
+  - obutuuliro # buttocks; 
+  - obusomyo # marrow of bones; 
+  - obusimu # nerves; 
+  - obusaJja # male generative organs; 
+  - obulago # neck; 
+  - obwoya # hair on body;
+  - obwongo # brain; 
+  - obwesinge # scalp; 
+  - obwetikkiro # crownof head; 
+  - obwenyi # forehead.
+
+  
+  - obuwere # scabies; 
+  - obutuulituuli # rash; 
+  - obutulututtu # a rash of pimples; 
+  - obutagali # bandy legs; 
+  - obusukuttu # congenital enlargement of the cheeks; 
+  - obusonko # infantile anaemia; 
+  - obunwamwa # disease of lips; 
+  - obulega # overdue pregnancy; 
+  - obulangula # falling out of eyelashes;
+  - obujonjo # gum of eye stuck to the lashes; 
+  - obugergere # footrot; 
+  - obubalagaze # sudden tingling pain; 
+  - obwosi # the child suffers from premature weaning.
+
+  - obusowe # eggs of locusts; 
+  - obuswlrlri # whiskers of cat;
+  - obwecaaka # tiny grasshoppers; 
+  - obuggalamatu # small edible termites; - obugirigimba dorsal fin; 
+  - obuloolo # fowl fleas; 
+  - obumpowooko # small inedible termites.
+
+  
+  - obugulumivu # height; 
+  - obugolokofu # straightness;
+  - obugole # wedding; 
+  - obugimu # fertility; 
+  - obuggya # newness; 
+  - obugevvu # plumpness; 
+  - obugazi # width;
+  - obugwagwa # foulness; 
+  - obujjajja # ancestry; 
+  - obukaali # anger # fury; 
+  - obukaba # depravity; 
+  - obukadde # old age;
+  - obukabakaba # cleverness; 
+  - obukamba # bitterness;
+  - obukambwe # fierceness; 
+  - obukiika # direction; 
+  - obukovvu # leanness; 
+  - obukoowu # fatigue; 
+  - obukoda # meanness;
+  - obukristaayo # Christianity; 
+  - obukula # greatness;
+  - obulaba # enmity; 
+  - obukyayi # hatred; 
+  - obukyamu # heresy;
+  - obukuntu # arrogance; 
+  - obukuusa # deceit; 
+  - obukumu # abundance; 
+  - obulaberezi # office of bishop; 
+  - obulalu # madness; 
+  - obulamu # life; 
+  - obulenzi # male sex; 
+  - obulemu # trouble; 
+  - obulema # crippled state; 
+  - obuleega # front;
+  - obulebevu # slackness; 
+  - obulimba # falsehood; 
+  - obuliika # exorbitant interest; 
+  - obulogo # witchcraft; 
+  - obulombolombo # tradition; 
+  - obulokozi # salvation; 
+  - obulogovvu # daftness;
+  - obulwa # fight; 
+  - obulungi # beauty; 
+  - obulumiriza # conviction; 
+  - obulumi # pain; 
+  - obunnabi # prophecy;
+  - obunaanya # idleness; 
+  - obulyake # extortion; 
+  - obulwadde # sickness; 
+  - obunyaga # state of extreme dirtiness; 
+  - obuntu # being; 
+  - obunyiiguluzi # satisfaction; 
+  - obunyikivu # perseverance; 
+  - obusagwa # poison; 
+  - obusaamu # beauty;
+  - obusammambiro # summit; 
+  - obusenza # service; 
+  - obuseezi # over charging; 
+  - obuseerezi # slipperiness; 
+  - obusawo # medical profession; 
+  - obusanjalaze # numbness; 
+  - obusika # inheritance; 
+  - obusezi # witchcraft; 
+  - obusirusiru # folly;
+  - obuswavu # shame; 
+  - obusunbuzi # trade; 
+  - obusungu # bad temper; 
+  - obussi # murder; 
+  - obuswege # misery; 
+  - obutalimu #nonsense; 
+  - obutamiivu # drunkenness; 
+  - obutamaavu # ferocity;
+  - obutitimbwe # abundance; 
+  - obutiti # cold; 
+  - obuti # fear;
+  - obutengu # obstinacy; 
+  - obutangaavu # transparency;
+  - obutamittami # distraction; 
+  - obuto # childhood; 
+  - obutunga # ability to delegate; 
+  - obutumi # power of sending on mission; 
+  - obutume # mission on which one is sent;
+  - obutonde # nature; 
+  - obuvume # fracture; 
+  - obuvubuka # youth;
+  - obuvumi # insulting behaviour; 
+  - obuwangaazi # permanence;
+  - obuvunaamwa # duress; 
+  - obuvumu # boldness; 
+  - obuwangwa # inherent nature; 
+  - obuwanvu # lenght; 
+  - obuwaze # force;
+  - obuwemu # shame; 
+  - obuwombeefu # humility; 
+  - obuylnza # power;
+  - obuyinike # grief; 
+  - obuyingirwa # compulsion; 
+  - obuwuulu # state of being a bachelor; 
+  - obuyonjo # neatness;
+  - obuzaaliranwa # birth; 
+  - obuzlbu # difficulty; 
+  - obuzira # bravery; 
+  - obwakabaka # kingdom; 
+  - obwakatonda # divinity.
+
+  - ndizabawuulu # a very large kind of plantain; 
+  - muvubu # the longest type of ttooke plantains # like the large Kafunze;
+  - mwanakuffe # a large type of ttooke plantain growing in the mbwa-fly areas of Kyaggwe; 
+  - muliibwampogola # a type of plantain with such small fruits that they are cooked unpeeled and peeled at the moment of eating; 
+  - mukubyakkonde # a type of plantain with small bananas like a fist;
+  - majjagga # a long kind of gonja plantain # not fat like manjaaya; 
+  - manjaaya # biggest kind of roasting plantain;
+  - kakira # a type of boiling banana like nsakala and of the muvubu or very large type; 
+  - kafuba # large type of boiling plantain; 
+  - kibuzi # type of plantain with very large bunches of closely packed food with blunt ends and very straight growing; 
+  - kisansa # large type of boiling banana like muvubu; 
+  - lusamba # type of large boiling banana; 
+  - nnalubi # type of boiling plantain; 
+  - nnakyetengo # type of plantain # very short tree # large bunches with many plantains;
+  - nnakitembe # type of plantain with long fruit; 
+  - nnakinsoola # reddish type of plantain with large bunches and many fruits; 
+  - nnakinsira # reddish type of plantain with large bunches and long fruit; 
+  - nnakinnyika # commonest type of plantain in Buddu # they can have four # five or six bunches on the stem and are very tasty; 
+  - nnakibule # large type of boiling plantain; 
+  - muwere # type of boiling plantain of a large kind; 
+  - nnakattanseese # commonest type of gonja plantain; 
+  - ssalalugazi # type of ttooke growing in large bunches of flat ended fruit # with broad and short leaves;
+  - lugugira # type of boiling banana; 
+  - simbalukono # type of banana; 
+  - nnakasabira # type of large plantain said to be common in Teso; 
+  - nnakanyala # type of plantain; 
+  - nnakamaall # type of both gonja and ttooke plantain rather like lujugira; 
+  - nnakabululu # type of plantain common in Buddu # very quick growing with good tasty pulp; 
+  - nnambi # type of boiling plantain like the kabula beer-making plantain;
+  - nnakabinyi # type of large boiling banana; 
+  - nnabusa # type of curved fattish plantain; 
+  - nnamunyu # large type of plantain; 
+  - nnasalugiri # type of boiling plantain;
+  - nnandigobe # type of plantain with small fruit rather like majaga in appearance # but very tasty; 
+  - nnamwezi # type of plantain tree with yellowish colour. It grows well and is not eaten by insects; 
+  - nsakala # muvubu type of plantain common in Buddu; 
+  - nvamumba # species of plantain # lit. get out of my way # on account of its size; 
+  - ssiira # large boiling banana # also: excess; 
+  - kigerekyanvubu # boiling banana which resembles nnakitembe; 
+  - malaaya # banana on Entebbe peninsula. Lit: harlot; 
+  - bbuzidume # type of boiling banana. Lit: billy goat on account of its large size; 
+  - bbogoya # type of eating banana; 
+  - kafunze # type of banana with very heavy closely packed fruit; 
+  - ggalambe # type of large gonja banana; 
+  - nnalugolima # type of boiling plantain.
+
+  - mmamba # kind of gonja plantain growing spirally in the bunch. The fruit is hard and is especially suitable for making beer; 
+  - mmongoota # type of beer making banana;
+  - malindi # type of beer banana; 
+  - katwalo # type of beer making banana having a very large bunch # it is also a type of roasting gonja banana; 
+  - kivuvu # type of beer banana # common in Kyaggwe # from vvu # owing to the greyish colour of the fruit; 
+  - kisubi # beer making banana; 
+  - lujjukira # large type of beer banana; 
+  - nnalwessanya # type of mbidde or beer making banana; 
+  - nsowe # best type of mbidde male beer making plantain; 
+  - nnumba # type of mbidde beer banana; 
+  - mufuka # type of banana used for making beer; 
+  - ssindika # beer making banana; 
+  - sitakange # beer banana. 
+  - lwewunzika # type of plantain which leans over and look likely to fall; 
+  - nnabansassaana # twin banana in one skin;
+  - ffampewo # big fruit at the extreme end of the first bunch of a gonja cluster; 
+  - nnakayanga # bark of banana tree very black with purplish shade much valued for tying up of parcels; 
+  - nnamukota # very large bunch of plantains; 
+  - mutere # dried bananas chopped small # which are regarded as food in famine time; 
+  - nnakitembe # type of plantain with long fruit # the petals of the flowers wither but remain on the fruit; 
+  - ndizabawuulu # type of plantain whose units grow so closely together that they are difficult for an unskilled bachelor or grass-widower to break off # hence they bemoan the fact that they have no wife to do the work for them;
+  - nnamirembe # plant up to 2 ft. growing in plantain gardens with clusters of mauve bell-shaped flowers.
+  - nnakitokolo # extensive plantain garden; 
+  - nnamulanda # vast plantain garden; 
+  - ttolo # vast plantain garden; 
+  - mulya # grey plantain eater; 
+  - nnamunkoko # bird like a plantain eater;
+  - nnawandagala # small green snake found in plantain gardens.
+
+  - mubumbo # young banana leaf not yet unrolled;
+  - mugonnoonyo # mid-rib of plantain leaf or a young leaf before it unfolds;
+  - muvuuma # bunch of plantains not fully grown;
+  - munyaala # first bananas of a young plant;
+  - mugondooli # sling made out of plantain fibre on which the food rests when steaming inside the pot and which is used to withdraw the packet of food when cooked;
+  - mugaaga # bandage of plantain bark round forehead # supposed to cure headache;
+  - mutikko # piece of plantain bark for tying parcels;
+  - mulinai # band of plantain bark tied round the forehead of a dead person;
+  - mututumba # white pith of plantain stem;
+  - mwetango # wild plant used by women to clean their hands after peeling plantains;
+  - muteteme # plantain stems cut up and laid on the ground; pulp of cooked plantain;
+  - munyu # salt extracted from plantain peelings;
+  - mwenge # native beer made of banana juice fermented with millet;
+  - mubisi # sweet banana juice.
+
+  - nkolo # stump of banana tree; 
+  - nsukusa # young plantain ready for transplantation; 
+  - ndoko # shoot ready for trans-plantation; 
+  - ndu # young plantain in shoot; 
+  - nno # banana bud;
+  - mpumbu # bloom on the stem of a plantain; 
+  - ndiizi # small yellow type of banana # the so-called lady's fingers.
+  - ngwira # bunch of bananas brought down by a storm; 
+  - nkota # a bunch of bananas; 
+  - minere # food # especially cooked mashed plantains; 
+  - ddigobe # ttooke cooked to a turn; 
+  - ntemera # felled plantain tree when there are no bearing trees in the lusuku; 
+  - njolo # type of beer making banana; 
+  - mbidde # male banana for making beer; 
+  - mmende # type of beer making banana in Bulemeesi; 
+  - njoye # type of ttooke plantain with very large bunches; 
+  - nkago # ttooke or female plantain; 
+  - ndiga balangira # kind of banana; 
+  - mpogola # plantain boiled in the skin; 
+  - ntikka # type of plantain with very large bunches;
+  - mpaguka # portion of kiwagu # small bunch of plantains broken off the stem; 
+  - nnoga # mouthfull of plantain rolled into a ball; 
+  - nkata # pad for the head; 
+  - nkondwe # decayed pith of plantain; 
+  - njawo # native umbrella; 
+  - mpina # banana leaf placed in a calabash of beer to prevent the beer from slopping down the neck; 
+  - mpu # stout package done up in plantain bark; 
+  - ndyamenvu # golden floral beetle with feeds on ripe bananas; 
+  - nkeretanyi # small edible animal very fond of eating bananas; 
+  - njaliro # banana leaves as lining for basket of peelings; 
+  - ndagala # medicine of plantains.
+
+  - Kittooke # banana tree; 
+  - kittooke-kizungu # a type of banana tree producing almost grey-blue fruit with a greyish bloom; 
+  - kiteteme # the root of a plantain;
+  - kitembe # type of wild plantain; 
+  - bigomba # dried plantains when cooked; 
+  - kiwagu # small bunch of bananas; 
+  - kiyondo # type of plant growing in poor soil  the leaves of which are used for washing hands free of sap after peeling plantains; 
+  - kidoodo # bunch of plantains; 
+  - kikolokomba # stem of bunch of plantain; 
+  - kiteekerero # chump of plantain;
+  - kigaaga # boiled plantain flattened out; 
+  - kiwaata # banana peeling; 
+  - kisanja # withered leaves of plantains; 
+  - kireka # banana leaf turning yellow; 
+  - kigomba # dried plantain;
+  - kinyinyinsi # scrapings of pith of plantain tree used as a sponge; 
+  - kisuumwa # piece of plantain stem used as a sponge; 
+  - kigogo # fresh plantain fibre used as a sponge;
+  - kiteerera # a hole dug at the foot of a plantain where the faeces of a baby were thrown; 
+  - kisinja # half of a bunch of bananas broken off; 
+  - kikamulo # grass left over from pressing banana beer; 
+  - kisanja # bunches of plantain leaves carried as a protection against dew when passing through long grass; 
+  - kisanja # pillow # bolster made of withered leaves of the plantain; 
+  - kyayi # dried plantain fibre used as a rope; 
+  - kitengu # leaves used as a table cloth; 
+  - kipaapi # strip of cloth of plantain bark used in early stage of roof building; 
+  - kiwombo # plume of banana leaves for ornamenting beer gourds of important people;
+  - kisanja # load of smoked fish enclosed in withered plantain leaves; 
+  - kisanja # hut thatched with withered plantain leaves; 
+  - kibanyi # netting or rack generally above the hearth on which bananas are left.
+
+  - ryenvu  # ripe sweet bananas; 
+  - ssogolero  # place for crushing bananas; 
+  - ssanja  # withered plantain leaves; 
+  - ttembe  # fruit of wild plantain; 
+  - ttooke  # bunch of plantains.
+
+  - lusuku # plantain garden; 
+  - lukiina # type of heavily producing plantain; 
+  - lubabi # young leaf of plantain; 
+  - luwina # fringe of banana leaf # girdle; 
+  - luwagala # bunch of bananas split down the middle; 
+  - lulata # well cooked mash of plantains; 
+  - lulagala # plantain leaf; 
+  - lukunya # plantain tree stripped and ruined by children; 
+  - lusoggo # plantain leaf twisted into sugar-loaf bag used as a rat-trap;
+  - lutigitigi # long stalk of banana flower; 
+  - lutakka # long shaped load of fish or dried plantains; 
+  - lugogo # plantain fibre while on tree; 
+  - luyina # string of banana leaves to go round the waist; 
+  - lutyatya # trench for crushing bananas for beer; 
+  - lutembe # necklace made of wild banana seeds;
+
+  - luleeba # bath made of plantain leaves put in a hole in the ground.
+
+  - kawujjo # small scoop made of leaf used for eating;
+  - kasikwasikwa # degenerate shoot of plantain; 
+  - katogo # stew of plantains and beans; 
+  - kanyaala # immature banana;
+  - kabula # a kind of banana; 
+  - kabezo # leaf used as a scoop for apportioning food; 
+  - kajemga # native umbrella made of outer skin of tree trunk of banana; 
+  - kansubi # bottom row of stem of bananas; 
+  - kanuunu # tiny flower of embryo plan­tain; 
+  - kawuuwo # plantain leaf used by wives for covering in pot when cooking matooke; 
+  - какоnerо # small stone on which the heart of the banana tree is beaten into a bathing sponge; 
+  - busera # porridge of banana meal;
+  - bukundugulu # splashes from beating fresh plantain fibre;
+  - bukundukundu # bits of banana in strained juice;
+  - busanjasanja # mushrooms which grow on withered plantain;
+  - busukusuku # mushrooms which grow on peelings in lusuku;
+  - bwavu # poverty i.e. a bald head caused by carrying loads of bananas.
+
+  - waagwo
+  - baagwo
+  - gwagwo
+  - gyagwo
+  - yaagwo
+  - zaagwo
+  - kyagwo
+  - byagwo
+  - lyagwo
+  - gaagwo
+  - Iwagwo
+  - zaagwo
+  - kaagwo
+  - bwagwo
+  - twagwo
+  - gwagwo
+  - gaagwo
+  - waagwo
+  - kwagwo
+  - gaagwo
+  - waagyo
+  - baagyo
+  - gwagyo
+  - gyagyo
+  - yaagyo
+  - zaagyo
+  - kyagyo
+  - byagyo
+  - lyagyo
+  - gaagyo
+  - Iwagyo
+  - zaagyo
+  - kaagyo
+  - bwagyo
+  - twagyo
+  - gwagyo
+  - gaagyo
+  - waagyo
+  - kwagyo
+  - gaagyo
+  - waayo
+  - baayo
+  - gwayo
+  - gyayo
+  - yaayo
+  - zaayo
+  - kyayo
+  - byayo
+  - lyalyo
+  - gaayo
+  - Iwayo
+  - zaayo
+  - kaayo
+  - bwayo
+  - twalyo
+  - gwalyo
+  - gaalyo
+  - waalyo
+  - kwalyo
+  - gaalyo
+  - waazo
+  - baazo
+  - gwazo
+  - gyazo
+  - yaazo
+  - zaazo
+  - kyazo
+  - byazo
+  - lyazo
+  - gaazo
+  - Iwazo
+  - zaazo
+  - kaazo
+  - bwazo
+  - twazo
+  - gwazo
+  - gaazo
+  - waazo
+  - kwazo
+  - gaazo
+  - waakyo
+  - baakyo
+  - gwakyo
+  - gyakyo
+  - yaakyo
+  - zaakyo
+  - kyakyo
+  - byakyo
+  - lyakyo
+  - gaakyo
+  - Iwakyo
+  - zaakyo
+  - kaakyo
+  - bwakyo
+  - twakyo
+  - gwakyo
+  - gaakyo
+  - waakyo
+  - kwakyo
+  - gaakyo
+  - waabyo
+  - baabyo
+  - gwabyo
+  - gyabyo
+  - yaabyo
+  - zaabyo
+  - kyabyo
+  - byabyo
+  - lyabyo
+  - gaabyo
+  - Iwabyo
+  - zaabyo
+  - kaabyo
+  - bwabyo
+  - twabyo
+  - gwabyo
+  - gaabyo
+  - waabyo
+  - kwabyo
+  - gaabyo
+  - waalyo
+  - baalyo
+  - gwalyo
+  - gyalyo
+  - yaalyo
+  - zaalyo
+  - kyalyo
+  - byalyo
+  - lyalyo
+  - gaalyo
+  - Iwalyo
+  - zaalyo
+  - kaalyo
+  - bwalyo
+  - twalyo
+  - gwalyo
+  - gaalyo
+  - waalyo
+  - kwalyo
+  - gaalyo
+  - waago
+  - baago
+  - gwago
+  - gyago
+  - yaago
+  - zaago
+  - kyago
+  - byago
+  - lyago
+  - gaago
+  - Iwago
+  - zaago
+  - kaago
+  - bwago
+  - twago
+  - gwago
+  - gaago
+  - waago
+  - kwago
+  - gaago
+  - waalwo
+  - baalwo
+  - gwalwo
+  - gyalwo
+  - yaalwo
+  - zaalwo
+  - kyalwo
+  - byalwo
+  - lyalwo
+  - gaalwo
+  - Iwalwo
+  - zaalwo
+  - kaalwo
+  - bwalwo
+  - twalwo
+  - gwalwo
+  - gaalwo
+  - waalwo
+  - kwalwo
+  - gaalwo
+  - waazo
+  - baazo
+  - gwazo
+  - gyazo
+  - yaazo
+  - zaazo
+  - kyazo
+  - byazo
+  - lyazo
+  - gaazo
+  - Iwazo
+  - zaazo
+  - kaazo
+  - bwazo
+  - twazo
+  - gwazo
+  - gaazo
+  - waazo
+  - kwazo
+  - gaazo
+  - waako
+  - baako
+  - gwako
+  - gyako
+  - yaako
+  - zaako
+  - kyako
+  - byako
+  - lyako
+  - gaako
+  - Iwako
+  - zaako
+  - kaako
+  - bwako
+  - twako
+  - gwako
+  - gaako
+  - waako
+  - kwako
+  - gaako
+  - waabwo
+  - baabwo
+  - gwabwo
+  - gyabyo
+  - yaabwo
+  - zaabwo
+  - kyabwo
+  - byabwo
+  - lyabwo
+  - gaabwo
+  - Iwabwo
+  - zaabwo
+  - kaabwo
+  - bwabwo
+  - twabwo
+  - gwabwo
+  - gaabwo
+  - waabwo
+  - kwabwo
+  - gaabwo
+  - waatwo
+  - baatwo
+  - gwatwo
+  - gyatwo
+  - yaatwo
+  - zaatwo
+  - kyatwo
+  - byatwo
+  - lyatwo
+  - gaatwo
+  - Iwatwo
+  - zaatwo
+  - kaatwo
+  - bwatwo
+  - twatwo
+  - gwatwo
+  - gaatwo
+  - waagwo
+  - baagwo
+  - gwagwo
+  - gyagwo
+  - yaagwo
+  - zaagwo
+  - kyagwo
+  - byagwo
+  - lyagwo
+  - gaagwo
+  - Iwagwo
+  - zaagwo
+  - kaagwo
+  - bwagwo
+  - twagwo
+  - gwagwo
+  - gaagwo
+  - waagwo
+  - kwagwo
+  - gaagwo
+  - waago
+  - baago
+  - gwago
+  - gyago
+  - yaago
+  - zaago
+  - kyago
+  - byago
+  - lyago
+  - gaago
+  - Iwago
+  - zaago
+  - kaago
+  - bwago
+  - twago
+  - gwago
+  - gaago
+  - waago
+  - kwago
+  - gaago
+  - kwatwo
+  - gaatwo
+
+  - owange
+  - abange
+  - ogwange
+  - egyage
+  - eyange
+  - zange
+  - ekyange
+  - ebyange
+  - eriyange
+  - agange
+  - olwange
+  - ezange 
+  - akange
+  - obwange
+  - otwange
+  - ogwange
+  - agange
+  - awange
+  - okwange
+  - agange
+  - owuwo
+  - ababo
+  - ogugwo
+  - egigyo
+  - eyiyo
+  - ezizo
+  - ekikyo
+  - ebibyo
+  - eriryo
+  - agago
+  - olulwo
+  - ezizo
+  - akako
+  - obubwo
+  - otutwo
+  - ogugwo
+  - agago
+  - awawo
+  - okukwo
+  - agago
+  - owange
+  - ewuwo
+  - owuwe
+  - ababe
+  - ogugwe
+  - egigye
+  - eуіуe
+  - ezize
+  - eкікуe
+  - ebibye
+  - erіrуe
+  - agage
+  - olulwe
+  - ezize
+  - akake
+  - obubwe
+  - otutwe
+  - ogugwe
+  - agage
+  - awawe
+  - okukwe
+  - agage
+  - owaffe
+  - abaffe
+  - ogwaffe
+  - egyaffe
+  - eyaffe
+  - ezaffe
+  - ekyaffe
+  - ebyaffe
+  - eryaffe
+  - agaffe
+  - olwaffe
+  - ezaffe
+  - akaffe
+  - obwaffe
+  - otwaffe
+  - ogwaffe
+  - agaffe
+  - awaffe
+  - okwaffe
+  - agaffeowammwe
+  - abammwe
+  - ogwammwe
+  - egyammwe
+  - eyammwe
+  - ezammwe
+  - ekyammwe
+  - ebyammwe
+  - eryammwe
+  - aganmiwe
+  - olwammwe
+  - ezammwe
+  - akammwe
+  - obwammwe
+  - otwammwe
+  - ogwammwe
+  - agammwe
+  - awammwe
+  - okwammwe
+  - agammwe
+  - owaabwe
+  - abaabwe
+  - ogwabwe
+  - egyabwe
+  - eyaabwe
+  - ezaabwe
+  - ekyabwe
+  - ebyabwe
+  - eryabwe
+  - agaabwe
+  - olwabwe
+  - ezaabwe
+  - akaabwe
+  - obwabwe
+  - otwabwe
+  - ogwabwe
+  - agaabwe
+  - awaabwe
+  - okwabwe
+  - agaabwe
+  - owange
+  - ewuwo
+  - ewuwe
+  - ewaffe
+  - ewammwe
+  - ewaabwe
+
+
+
+  - kalimi-ngobya # double tongued person who is out to cheat;
+  - kaamuma # a person with extremely bad manners and no feeling for etiquette and customs; 
+  - kabandu # an extremely foolish individual; 
+  - kafu # one who constantly picks quarrels;
+  - kadduwanema # one who has been crippled # a lame person;
+  - kasajjafuba # one who inspires fear on account of his looks;
+  - kapeeka # impertinent # incessantly begging individual;
+  - kannaaluzaala # messenger of evil fore-bodings; 
+  - kalungi-mutwe # a person who looks very attractive but is in reality very stupid; 
+  - kalimbira # one who never speaks the truth;
+  - kagubiiru # an undersized person who is regarded as weak;
+  - kawenkene # an unavoidable # inescapable ennemy; 
+  - kawalococco # a long spidery sort of fellow # usually very poor;
+  - katongolekkungu # the prince of boasters; 
+  - katoloba # a person who is in constant disharmony and very provocative; 
+  - kasoomi # a person with a pointed cranium; 
+  - kasiru #a dumb man # an idiot; 
+  - kasandali # an ego-centered # selfish and irresponsible person; 
+  - kaseemeza # a seducer; 
+  - kasaagira # a flirtatious man;
+  - kagezi # a very clever person; 
+  - kanyangezi # a sniffier.
+  - ssekadde # a venerable old man; 
+  - ssempala # the poor fellow;
+  - ssekimpanika # a corpulent fellow; 
+  - ssemubi # a very ugly fellow; 
+  - ssebinagina # a corpulent person; 
+  - ssebintu # a very rich person; 
+  - ssabazira # the bravest of the brave; 
+  - sseduvu # Mr. Glutton; 
+  - ssekalootera # Mr. Dreamer; 
+  - ssempala # Mr. Poor Fellow; 
+  - ssebintu # Mr. Croesus; 
+  - sserulyamayenje # Mr. Happy go lucky; 
+  - sserwali # Mr. One fine day;
+  - nnalwenaanya # a woman of the street; 
+  - nnamagoya # an unpig-mented individual; 
+  - nnamagalo # a six-fingered person;
+  - nnalukalakala # a danger loving # self reliant # fearless individual; 
+  - nnakwale # an urchin # a miserable specimen of a man; 
+  - nnakitukula # an extremely white person; 
+  - nnakinsungwa # an emasculated infertile person; 
+  - nnakimpinginya # short # thick set stubby person; 
+  - nnabyejeegula # one who is extra-vagant # regardless of cost; 
+  - nnakigwanyizi # a happy go lucky # light minded individual; 
+  - nnakifankenyere # an in- elegant # ill bred individual; 
+  - nnakaylgiri # a dwarf;
+  - nnakampina # a dwarflike person; 
+  - nnabuggwamu # an uninvited guest # trespasser; 
+  - nnabikyusa # someone facing both ways;
+  - nnyonga # a very black negro; 
+  - nnalwalubwa # one who is being used as a victim; 
+  - nnasubwa # unlucky person liable to ad-verse circumstances; 
+  - nnantawetwa # a resolved # determined person; 
+  - nnantaganyula # a worthless person; 
+  - nnamwetozzi # sensible # irascible short tempered person; 
+  - nnamukundi # one with a prominent navel; 
+  - nnamukono # a woman with shrunken breasts; 
+  - nnampulirizabi # a person who is stone deaf; 
+  - nnalulaba # an eyewitness; 
+  - nnakamwantette # a tale-bearer; 
+  - nnakamwambula # a bearer of stale news; 
+  - nfiirabulago # a very old and trusted friend; 
+  - ngumyamutwa # a very tough individual; 
+  - nnabeerubeeru # an extremely white person;
+  - nnasajja # a very fine fellow.
+  - kigalla # an individual who is hard of hearing; 
+  - kireeya # a person who travels from the one to the other; 
+  - kipamira # intractable # unmanageable individual; 
+  - kimbuyega # scruffy little fellow; 
+  - kikombooza # woman of easy virtue;
+  - kikombooza # person whomakes off with anything he sees;
+  - kiggananenge # corpse which cannot be identified.
+  - luwangula # the all conquering one; 
+  - lunkupe # a person deprived of everything; 
+  - lukumba # poor nervous timorous person; 
+  - lukakajja # shrivveled up scrawny individual;
+  - lujunju # habitai drunkard; 
+  - lucoolo # a poor man;
+  - luzungazunga # clumsy # gawkish person;
+  - walucocco # tall weak fellow # ungainly person; 
+  - walugufu # a very thin person; 
+  - wannalubiri # a tall thin person;
+  - wambwa # Mr. Dog; 
+  - walugabi # Mr. Bushbuck; 
+  - wakayima # Mr. Hare; 
+  - wango # Mr. Leopard; 
+  - wanjovu # Mr. Elephant;
+  - wankoko # Mr. Hen.
+
+
+  
+  - omulesi # nurse; 
+  - omujjanjabi # nurse; 
+  - omuyunzi # bone-setter; 
+  - omusizi # teacher # sower; 
+  - omulagirizi # instructor;
+  - omusogoozi # brewer; 
+  - omulabirizi # bishop; 
+  - omusonyi #tailor; 
+  - omuzimbi # builder; 
+  - omuserezi # thatcher; 
+  - omubassi #carpenter; 
+  - omulamussi # judge; 
+  - omulambuzi # inspector:
+  - omutayirizi # one who circumcises; 
+  - omutuusi # merchant;
+  - omuvvuunuzi # interpreter; 
+  - omuweesi # smith; 
+  - omuleesi #one who stretches leather; 
+  - omulinzi # guard; 
+  - omuliml #cultivator; 
+  - omukomazi # maker of bark-cloth; 
+  - omukonyi #cobbler; 
+  - omubaasi # butcher; 
+  - omubumbi # potter; 
+  - omulunzi #herdsman; 
+  - omusuubuzi # retail trader; 
+  - omutunzi # tailor # merchant; 
+  - omutezi # trapper # one who lies in wait;
+  - omutonyi # painter; 
+  - omusenyi # one of the main partici­ pants in fishing with a dragnet; 
+  - omuvubi # fisherman;
+  - omuvuzi # driver; 
+  - omuyizzi # hunter; 
+  - omuyimbi # singer;
+  - omuzinyi # dancer; 
+  - omuwandisi # writer # secretary; 
+  - omuwonzi #fetish worshipper; 
+  - omuwozi # pleader; 
+  - omusimi # excavator;
+  - omusoosi # author # originator; 
+  - omusezi # sorcerer who works at night; 
+  - omuteebi # marksman; 
+  - omuzizi # tracker in hunting who locates game for others ; 
+  - omuwuuzl # the second man to throw a spear in hunting animals; 
+  - omuwozi # lender; 
+  - omudussi # a very fast runner; 
+  - omupakasi # work­ man; 
+  - omugamuzi # one who brings in food from the country;
+  - omufumbi # cook; 
+  - omuyambi # helper; 
+  - omusazi # one who cuts # a judge; 
+  - omusabi # one whomakes a request; 
+  - omusi # one who grinds; 
+  - omussoggozi # digger of potatoes;
+  - omuseezi # one who sells very deer; 
+  - omugassi # mediator;
+  - omukulembezi # guide; 
+  - omukozi # workman; 
+  - omwenzi # sweeper;
+  - omwetissi # porter; 
+  - omuyizi # student; 
+  - omutambezi # ritual executioner; 
+  - omusaasi # provisioner; 
+  - omuwaabi # accuser;
+  - omutabaazi # soldier; 
+  - omususi # peeler of plantains;
+  - omutalisi # postman; 
+  - omutasi # spy; 
+  - omutabanguzi # agitator;
+  - οmugezi # clever person.
+  - omukyondwa # bone-setter; 
+  - omulerwa # mid-wife; 
+  - omuzaalira # mid-wife; 
+  - omuyigiriza # teacher; 
+  - omugoma # drummer;
+  - omuyiisa # brewer; 
+  - omufuusa # conjurer; 
+  - omulanga # harpist;
+  - omuwooza # tax-gatherer; 
+  - omutaka # guardian of clan lands;
+  - omuwanika # steward; 
+  - omuweereza # attendant; 
+  - omukkunnaanya # news collector; 
+  - omuwuula # sub-shepherd; 
+  - omusumba # shepherd;
+  - omuggya # recruit; 
+  - omusomesa # teacher; 
+  - omusagala # cow­ herd; 
+  - omugoma # drummer; 
+  - omuzaalisa # mid-wife; 
+  - omusutwa # a well beloved person; 
+  - omupulirwa # witness; 
+  - omuwolereza # interceder; 
+  - omuwawaabirwa # defendant.
+  - omusaawo # doctor; 
+  - omusenero # brewer # beer taster # wife who keeps the brewing utensils;  
+  - omufumbiro # cook; 
+  - omulogo #wizzard; 
+  - omulaalo # herdsman; 
+  - omuvundo # a rich person.
+  - omusirikale # soldier; 
+  - omutongole # sub-chief; 
+  - omutume # apostle; 
+  - musigire # steward; 
+  - omulaamire # heir; 
+  - omuleere # flute-player; 
+  - omulaawe # eunuch; 
+  - omulaabe # ennemy;
+  - omusibe # prisoner; 
+  - omusuze # guest; 
+  - omunyage # captive after raid; 
+  - omukegere # cute running person; 
+  - omwegendereze # cautious person; 
+  - omusenze # servant; 
+  - omutume # messenger;
+  - omwesengeze # tenant; 
+  - omuwannanguze # exile #
+  - gundi # what's his name; 
+  - ddiikoni # deacon; 
+  - mekanika # mechanic;
+  - kalaani # clerck.
+
+
+  - Katonda # God # Creator; 
+  - nnamugereka # synonym for God;
+  - nnagaddya # a goddess # typical name in the Lugave clan;
+  - nnakumi # goddess # wife of Mukasa # person with a hare-lip; 
+  - nnagawonye # goddess of rain and food; 
+  - nnakayaga #goddess of tempest; 
+  - nnamalere # those inspired by this deity beat on trees with their heads and split the trees to provide a passage; 
+  - nnalwoga # name of a goddess;
+  - nnamugeta # goddess supposed to cause calamities;
+  - luyisi # a man possessed ny this deity used to crunch bones; 
+  - lule # god of rain; 
+  - lubanga # a lubaale spirit;
+  - lubaale # pagan god # firmament;
+  - Kitinda # lubaale spirit to whom crocodiles were sacred;
+  - kagolo # name of god # Juppiter the thunderer; 
+  - kiwanuka # god of thunder; 
+  - kizito # patron divinity of soothsayers;
+  - kibuuka # war god; 
+  - kizuuzi # diviner employed to find lost things; 
+  - kawagga # deity supposed to be responsible for bringing the bubonic plague; 
+  - kawumpuli # deity who was supposed to cause sickness and whose shrine was in the woods of Buyege in Busiro;
+  - mayanja # heaten deity incarnated in the leopard; 
+  - walusi # deity of storms and meteors; 
+  - wamala # deity whose votaries wore red berries round the neck; 
+  - wannema # lubaale deity;
+  - nnenda # tutelary deity of Kyaggwa;
+
+  - omutanda # a title of the king; 
+  - omulangira # prince;
+  - omumbejja # princess; 
+  - omukweya # royal retainer;
+  - omulungiro # kabaka's pipefiller; 
+  - omujoona # royal potter;
+  - omutette # old man in charge of the firewood of the king;
+
+  - omuyinza # one having power; 
+  - omugabe # general;
+  - omumyuka # second in command; 
+  - omujaasi # commander in chief; 
+  - omukungu # high ranking chief; 
+  - omumyampala #headman; 
+  - omutwasi # person in charge; 
+  - omukakali #chief of the wizzards; 
+  - omufuzi # ruler; 
+  - omukama # lord;
+  - omukulembeze # leader; 
+  - omutongole # chief holding his position from the Kabaka; 
+  - omusiige # boy or girl send to serve a king or chief; 
+  - omusale # fifth chief in rank;
+  - omusebeyi # inferior wife of chief or king; 
+  - malyo # gourd grower of the kabaka; 
+  - masiko # sweeper of the kabaka's courtyard; 
+  - masisa # keeper of the royal latrine; 
+  - mugema # old title of chief under kabaka; 
+  - mulamba # king's head gatekeeper; 
+  - mwanje # one in charge of the kabaka's poultry; 
+  - mwanga # former king of Buganda; 
+  - mutesa # name of king of Buganda; 
+  - munnekyeyo # sweeper of the king's courtyard.
+
+
+  - ssaabataka # the kabaka as overlord of the land; 
+  - ssekibobo # chief of Kyaggwe; 
+  - lumaama # chief of Kabula; 
+  - kangaawo # chief of Bulemezi county; 
+  - mbuubi # chief of Buvuma; 
+  - kkweba # chief of Ssese islands; 
+  - kaggo # chief of the county of Kyaddondo; 
+  - mukwenda # chief of Ssingo county; 
+  - kimbugwe # chief of Bululi county; 
+  - luweekula # chief of Buweekula county; 
+  - mugema # chief of Busiru; 
+  - kaima # chief of Mawokota;
+
+  - ssabalangira #  the head of the princes ; 
+  - ssabaganzi #  maternal uncle of the kabaka #  one of the three notables allowed to greet the king standing; 
+  - ssegwanga #  title of the kabaka # cock #  since two cocks are not in the same place; 
+  - ssewava #  son of princess and commoner; 
+  - sseruti #  king's head brewer;
+  - ssekabaka #  term used for a dead kabaka; 
+  - ssebalija #  chief herdsman of the king's cattle; 
+  - ssebaddu #  head of servants of chief not living in the compound; 
+  - ssensalire #  head of the king's milkmen; 
+  - ssemanda #  smith;
+  - nnaabagereka #  name of the Queen; 
+  - nnaabakyala #  head of the wives; 
+  - nnaalinya #  queen-sister; 
+  - nnaamasole #  queen-mother;
+  - nnasaza #  chief's second wife; 
+  - nnamutinda #  wife of the king while in purdah; 
+  - nnabikande #  king's aunt who was mid-wife to all the king's wives;
+  
+  - kabeja
+  - nanzigu
+  - luyiga
+  - kikoma
+  - nakalu
+  - bayita
+  - sabadu
+  - katikamu
+  - munyuwa
+  - mukolera
+  - luwaga #  title of the kabaka; 
+  - lumoonyera #  flutist of the reign of Guma; 
+  - lubuga #  queen-sister; 
+  - laba #  master of cere-monies; 
+  - lukulwe #  head chief; 
+  - luwangula #  name of great con-que re r;
+  - kyukyu #  it was once the name of the kabaka because he was fierce and could not be approached; 
+  - kimbugwe #  title of the keeper of the king's umbilical cord; 
+  - kintu #  first king of Buganda; 
+  - kigano #  courtesan; 
+  - kiyini #  chief royal tanner;
+
+  - kiweewa # eldest son of the king; 
+  - kabaka # king # queen;
+  - kabejja # title of the king's second wife; 
+  - kaddulubale # chief wife of the king; 
+  - kalindaluzzi # royal fountain-master; 
+  - kayungirizi # a runner carrying official news;
+  - kawuula # chief of the royal drummers; 
+  - kawulukusi # courier;
+  - kattikiro # prime minister or any chief minister; 
+  - kawuka # royal herdsman; 
+  - kawuuta # chief of the royal cooks; 
+  - kunera # name of one of the kings; 
+  - kkwini # queen; 
+  - gabunga # chief
+  - in charge of canoes; 
+  - nnakyeyo # royal sweeper; 
+  - nnakibinge # name of one of the old kings of Buganda; 
+  - nnamusu # keeper of the royal latrines; 
+  - wamala # the one who brought up the rear in procession of courtiers; 
+  - llijenti # regent;
+  - kalabalaba # master of ceremonies.
+
+
+  - kitange # my father; 
+  - mange # my mother;
+  - nnyabo # my mother; 
+  - baze # my husband; 
+  - mwanyinaze # my brother or sister;
+  - omulongo # twin; 
+  - omukadde # parent; 
+  - omukulu # elder;
+  - omubbeere # step-brother or sister; 
+  - omufuuzi # orphan;
+  - omuggulanda # firstborn; 
+  - omuzadde # parent; 
+  - omwate # girl no longer a virgin; 
+  - omuzeyi # old man; 
+  - omusika # heir;
+  - omusajja # husband; 
+  - omujjwa # nephew # niece; 
+  - omufumbo # married person; 
+  - omukaamwana # daughter-in-law; 
+  - omuvubuka # youth: # 
+  - omuwaala # girl; 
+  - omugóle # bride; 
+  - omulenzi # boy;
+  - omuwere # new-born infant; 
+  - omukazi # woman; 
+  - omuzaana # female slave; 
+  - omuto # child; 
+  - omutooto # youngster;
+  - omulaamire # heir; 
+  - omukyala # lady of the house: # 
+  - omukata # child slow in developing; 
+  - omukirodi # small pretty girl;
+  - omuwumirizi # man who gives away the woman; 
+  - omuwumirize # woman who is handed over; 
+  - omuwuulu # bachelor; 
+  - mukkodomi # brother-in-law of a man; 
+  - muko # brother-in-law of a man;
+  - muka # wife; 
+  - munywami # bloodbrother; 
+  - musangi # wife's sister's husband; 
+  - muggya # concubine; 
+  - muganda # brother # sister; 
+  - mulamu # sister-in-law of a woman;
+  - ssemaka # householder; 
+  - sseruganda # brother; 
+  - sserwajja # visitor; 
+  - ssemwandu # widower; 
+  - ssenga # aunt on father's side;
+  - ssewamuko # father of the bride; 
+  - ssezaala # father-in-law of the bride; 
+  - ssabalongo # father of twins;
+  - nnamugeta # name of an aborted child # God supposed to cause calamities; 
+  - nnalugongo # eldest wife; 
+  - nnaava # child of princess and peasant; 
+  - nnakazadde # title of parent in his own village; 
+  - nnakawere # mother of tiny infant; 
+  - nnakato # second born of girl twins;
+  - nnakafuga # mistress of the house; 
+  - nnyanzala # mother-in-law;
+  - nnatuukirira # vigorous infant; 
+  - nnannanda # sister;
+  - nnannwandu # widow; 
+  - nnakabutuzi # parent or wife or husband or woman who owns a house; 
+  - nnakyayombekadde # woman house owner;
+  - kogongo # proper name for elder of male twins; 
+  - kizibwe # daughter of father's sister; 
+  - kitiginya # bouncing baby;
+  - kojja # uncle # mother's brother; 
+  - butyampa # very small child; 
+  - jjajja # grandfather # grandmother # ancestor; 
+  - kamya # name of child born next after twins; 
+  - kato # proper name for the first born of male twins.
+
+
+  - omuzaaliranwa # native # aboriginal; 
+  - omuyanja # member of the heart clan; 
+  - omungereza # englishman; 
+  - omunyami # type of Indian; 
+  - omunyolo # native of Bunyoro; 
+  - omusese # native of Ssese islands; 
+  - omuvuma # native of Buvuma; 
+  - omuwalabu #arab; 
+  - omutara # old name for a munyoro; 
+  - omusoga # native of Busoga; 
+  - omulunnaana # man from the coast; 
+  - omubirigi # a belgian; 
+  - omudaaki # a german; 
+  - omuganda # native of Buganda; 
+  - omugwira # foreigner # stranger # alien; 
+  - langa # dwarf like a member of the forest tribe of Kyaggwa;
+  - mumansi # native of a county; 
+  - nnakabala # native born person; 
+  - munnaggwanga # foreigner.
+
+
+  - nnadduma # pains in the back; 
+  - nnakasiki # anaemia; 
+  - nnamusuna # chicken pox; 
+  - nnampwa # oedema # fulness of the upper eyelid;
+  - kawammansi # after pains of labour; 
+  - kawango # severe in-tractable headache; 
+  - kawumpuli # bubonic plague # any violent disease; 
+  - kawere # scabies; 
+  - kawankumi # intestinal worms;
+  - kasamamya # bloodlessness of the lips # caused by white eruptions # red lips after syphillis; 
+  - kawulukutu # swelling in the ear # generally fatal; 
+  - kamanya # cramp; 
+  - kawaali # small-pox; 
+  - kantoolooze # giddiness # vertigo; 
+  - kakiki # dys-pepsia # indigestion; 
+  - kakenge # collie pains; 
+  - kanya # hernia;
+  - kabatala # ulcer of the vulvae; 
+  - kabengo # enlarged spleen;
+
+  - lemala
+  - tegeera
+  - lwaaza
+  - lemaza
+  - tegeeza
+  - matira
+  - jukira
+  - eraliikirira
+  - matiza
+  - jukiza
+  - eraliikiriza
+  - yimirira
+  - swala
+  - swaza
+  - tambula
+  - tambuza
+  - yingira
+  - yingiza
+  - galamira
+  - galamiza
+  - tuula
+  - tuuza
+  - kaabira 
+  - kaabiza
+  - kula
+  - kuza
+ 
+  - sembera
+  - sembeza
+  - nnyogoga
+  - nnyogoza
+ 
+  - nyiiga
+  - nyiiza
+  - kyuusa
+  - yusa
+  - yita
+  - kyuuka
+  
+  - ekwaka
+  - seka
+  - longoosa
+  - longooseza
+  - lowooza
+  - lowoozesa
+  - koowa
+  - kooya 
+  
+  - lwaana
+  - ewunya
+  - noonya
+  - lwaanyisa
+  - ewunyisa
+  - noonyereza
+  - Okyasoma
+  - Nkyasoma
+  - Akyasoma
+  - Tukyasoma
+  - Mukyasoma
+  - Bakyasoma
+  - Genda 
+  - Vuga 
+  - Kendeeza
+  - sipiidi
+  - mpola

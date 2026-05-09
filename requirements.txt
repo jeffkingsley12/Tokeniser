@@ -1,0 +1,4 @@
+# Build dependencies for Tokeniser
+# Pin exact versions for reproducible builds
+
+PyYAML==6.0.1
