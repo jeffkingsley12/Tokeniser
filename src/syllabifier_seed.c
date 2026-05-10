@@ -20,10 +20,14 @@
  */
 
 #include "syllable_seeds.h"   /* generated — do not edit */
-#include "tokenizer.h"
-
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <ctype.h>
+
+#include "tokenizer.h"
 
 /* =========================================================
  *  PHONOTACTIC SEEDS — Complete Luganda Syllable Alphabet
@@ -73,6 +77,26 @@ static const char *PHONO_SEEDS[] = {
     "vva", "vve", "vvi", "vvo", "vvu",
     "zza", "zze", "zzi", "zzo", "zzu",
     "nnya", "nnye", "nnyi", "nnyo", "nnyu",
+    /*Geminate cvv sounds*/
+    "baa", "bee", "bii", "boo", "buu",
+    "daa", "dee", "dii", "doo", "duu",
+    "faa", "fee", "fii", "foo", "fuu",
+    "gaa", "gee", "gii", "goo", "guu",
+    "jaa", "jee", "jii", "joo", "juu",
+    "kaa", "kee", "kii", "koo", "kuu",
+    "laa", "lee", "lii", "loo", "luu",
+    "maa", "mee", "mii", "moo", "muu",
+    "naa", "nee", "nii", "noo", "nuu",
+    "nyaa", "nyee", "nyii", "nyoo", "nyuu",
+    "ŋaa", "ŋee", "ŋii", "ŋoo", "ŋuu",
+    "paa", "pee", "pii", "poo", "puu",
+    "raa", "ree", "rii", "roo", "ruu",
+    "saa", "see", "sii", "soo", "suu",
+    "taa", "tee", "tii", "too", "tuu",
+    "vaa", "vee", "vii", "voo", "vuu",
+    "waa", "wee", "wii", "woo", "wuu",
+    "yaa", "yee", "yii", "yoo", "yuu",
+    "zaa", "zee", "zii", "zoo", "zuu",
 
     /* Prenasalized Clusters (NCV) */
     "mba", "mbe", "mbi", "mbo", "mbu",
@@ -124,10 +148,15 @@ static const char *PHONO_SEEDS[] = {
     "ndwa", "ndwe", "ndwi", "ndwo", "ndwu",
     "ndya", "ndye", "ndyi", "ndyo", "ndyu",
     "ngwa", "ngwe", "ngwi", "ngwo", "ngwu",
+    "ngya", "ngye", "ngyi", "ngyo", "ngyu",
     "nkwa", "nkwe", "nkwi", "nkwo", "nkwu",
+    "nkya", "nkye", "nkyi", "nkyo", "nkyu",
     "nswa", "nswe", "nswi", "nswo", "nswu",
+    "nsya", "nsye", "nsyi", "nsyo", "nsyu",
     "ntwa", "ntwe", "ntwi", "ntwo", "ntwu",
+    "ntya", "ntye", "ntyi", "ntyo", "ntyu",
     "nzwa", "nzwe", "nzwi", "nzwo", "nzwu",
+    "nzya", "nzye", "nzyi", "nzyo", "nzyu",
 
 
     /* Syllabic Nasals & Semivowel Orphans */
@@ -313,6 +342,45 @@ uint32_t stbl_seed_phonotactic(SyllableTable *stbl)
  *  morpheme is skipped (not partially inserted).
  * ========================================================= */
 
+/* =========================================================
+ *  clean_and_normalize_seed — Strip comments and fix Cyrillic homoglyphs
+ *
+ *  MORPHEME_SEEDS[] may contain metadata (comments, glosses) after '#'.
+ *  This helper extracts just the Luganda word portion and fixes common
+ *  Cyrillic homoglyphs (OCR errors) to Latin equivalents.
+ *  ========================================================= */
+void clean_and_normalize_seed(char *dest, const char *src, size_t max_len) {
+    if (!src || !dest || max_len == 0)
+        return;
+    
+    size_t d = 0;
+    const unsigned char *s = (const unsigned char *)src;
+
+    while (s[0] != '\0' && s[0] != '#' && s[0] != ';' && d < max_len - 1) {
+        /* Fix common Cyrillic homoglyphs (UTF-8) to Latin equivalents */
+        if (s[0] == 0xD0) {
+            if (s[1] == 0xBE) { dest[d++] = 'o'; s += 2; continue; } // о -> o
+            if (s[1] == 0xB0) { dest[d++] = 'a'; s += 2; continue; } // а -> a
+            if (s[1] == 0xB5) { dest[d++] = 'e'; s += 2; continue; } // е -> e
+            if (s[1] == 0xBA) { dest[d++] = 'k'; s += 2; continue; } // к -> k
+            if (s[1] == 0xBC) { dest[d++] = 'm'; s += 2; continue; } // м -> m
+            if (s[1] == 0xBD) { dest[d++] = 'n'; s += 2; continue; } // н -> n
+            if (s[1] == 0xBF) { dest[d++] = 'p'; s += 2; continue; } // п -> p
+            if (s[1] == 0x81) { dest[d++] = 'c'; s += 2; continue; } // с -> c
+            if (s[1] == 0xB3) { dest[d++] = 'x'; s += 2; continue; } // х -> x
+        }
+        if (s[0] == 0xD1 && s[1] == 0x83) { dest[d++] = 'u'; s += 2; continue; } // у -> u
+
+        dest[d++] = *s++;
+    }
+    dest[d] = '\0';
+
+    /* Trim trailing whitespace */
+    while (d > 0 && isspace((unsigned char)dest[d - 1])) {
+        dest[--d] = '\0';
+    }
+}
+
 /*
  * vocab_validate_morphemes — Validation pass for morpheme seeds.
  *
@@ -332,23 +400,25 @@ uint32_t vocab_validate_morphemes(Tokenizer *tok)
 {
     uint32_t seeded = 0;
     uint16_t syls[MAX_SEQ_LEN];
+    char clean_buf[MAX_TOKEN_CHARS];
 
     for (uint32_t i = 0; i < MORPHEME_SEED_COUNT; i++) {
-        const char *morpheme = MORPHEME_SEEDS[i];
-        if (!morpheme) break;
+        const char *raw_morpheme = MORPHEME_SEEDS[i];
+        if (!raw_morpheme) break;
 
-        int n_syls = syllabify(tok->syl, morpheme, syls, MAX_SEQ_LEN);
+        /* Clean the string before syllabifying */
+        clean_and_normalize_seed(clean_buf, raw_morpheme, sizeof(clean_buf));
+        
+        if (clean_buf[0] == '\0') continue;
+
+        /* Now syllabify the CLEAN word (e.g., "omunyenge" instead of the whole line) */
+        int n_syls = syllabify(tok->syl, clean_buf, syls, MAX_SEQ_LEN);
+        
         if (n_syls <= 0) {
-            if (n_syls < 0) {
-                fprintf(stderr,
-                    "[seed] warning: syllabify() failed for morpheme \"%s\" "
-                    "(skipping)\n", morpheme);
-            }
+            // This will no longer trigger for definitions/spaces
             continue;
         }
 
-        /* Validation only — syllable IDs are discarded.
-         * tokenizer_build() re-syllabifies during vocabulary construction. */
         seeded++;
     }
 

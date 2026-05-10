@@ -4,10 +4,26 @@
 #include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <ctype.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+
+/* Strip dictionary-style comments (# and ;) and trailing whitespace.
+ * Modifies buffer in-place (safe with MAP_PRIVATE mmap). */
+static void clean_line(char *p) {
+    /* Strip comments: # and ; delimiters */
+    char *hash = strchr(p, '#');
+    if (hash) *hash = '\0';
+    char *semi = strchr(p, ';');
+    if (semi) *semi = '\0';
+
+    /* Trim trailing whitespace */
+    size_t len = strlen(p);
+    while (len > 0 && isspace((unsigned char)p[len - 1]))
+        p[--len] = '\0';
+}
 
 Corpus *corpus_load(const char *path, size_t max_bytes, uint32_t max_lines,
                     size_t line_buf_size) {
@@ -78,6 +94,14 @@ Corpus *corpus_load(const char *path, size_t max_bytes, uint32_t max_lines,
         if (p == end) break;
 
         /* Found start of a document */
+        clean_line(p);  /* Strip comments and whitespace */
+
+        /* Skip if line is empty after cleaning */
+        if (*p == '\0') {
+            p++;
+            continue;
+        }
+
         if (c->n_docs >= cap) {
             if (cap > (uint32_t)(UINT32_MAX / 2)) break;
             cap *= 2;

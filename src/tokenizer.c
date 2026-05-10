@@ -41,6 +41,7 @@ extern int stbl_seed_special(SyllableTable *stbl);
 extern uint32_t stbl_seed_phonotactic(SyllableTable *stbl);
 extern int stbl_seed_orphan_ascii(SyllableTable *stbl);
 extern void stbl_freeze(SyllableTable *stbl);
+extern void clean_and_normalize_seed(char *dest, const char *src, size_t max_len);
 
 /* =========================================================
  *  UTF-8 Utility: Sequence Length
@@ -409,17 +410,33 @@ void tokenizer_rebuild_id_to_str(Tokenizer *t) {
   if (!t->id_to_str)
     return;
 
+  uint32_t syl_id_base = 0;
+  uint32_t gram_id_base = syl_id_base + t->stbl->count;
+  uint32_t morph_id_base = gram_id_base + (t->rs ? t->rs->rule_count : 0);
+
   /* 1. Syllables */
   for (uint32_t si = 0; si < t->stbl->count && si < t->vocab_size; si++) {
-    t->id_to_str[si] = t->stbl->entries[si].text;
+    t->id_to_str[syl_id_base + si] = t->stbl->entries[si].text;
   }
 
   /* 2. Grammar Rules (Subwords) */
   if (t->gp_expansions && t->rs) {
     for (uint32_t ri = 0; ri < t->rs->rule_count; ri++) {
-      uint32_t tid = SPECIAL_TOKENS_COUNT + 256 + ri;
+      uint32_t tid = gram_id_base + ri;
       if (tid < t->vocab_size) {
-        t->id_to_str[tid] = t->gp_expansions[ri];
+        if (t->gp_expansions[ri] != NULL) {
+          t->id_to_str[tid] = t->gp_expansions[ri];
+        }
+      }
+    }
+  }
+
+  /* 3. Morpheme Seeds */
+  if (t->morph_strings) {
+    for (uint32_t mi = 0; mi < MORPHEME_SEED_COUNT; mi++) {
+      uint32_t tid = morph_id_base + mi;
+      if (tid < t->vocab_size && t->morph_strings[mi]) {
+        t->id_to_str[tid] = t->morph_strings[mi];
       }
     }
   }
@@ -586,20 +603,9 @@ Tokenizer *tokenizer_build(const char **docs, uint32_t n_docs) {
 
   /* Syllabifier stays UNFROZEN during build so it can intern atoms from
    * seeds/corpus. */
-  uint32_t morpheme_seeded = vocab_validate_morphemes(t);
-  if (morpheme_seeded == 0) {
-    fprintf(stderr, "[tokenizer_build] Warning: No morpheme seeds loaded\n");
-  }
+  (void)vocab_validate_morphemes(t);
 
-  /* Morpheme seeds: interned to ensure they exist as atoms (if possible) */
-  for (uint32_t i = 0; i < MORPHEME_SEED_COUNT; i++) {
-    const char *m = MORPHEME_SEEDS[i];
-    if (!m)
-      break;
-    uint16_t syls[MAX_SEQ_LEN];
-    int n = syllabify_optimized(t, m, syls, MAX_SEQ_LEN);
-    (void)n;
-  }
+  /* Morpheme seeds were interned via vocab_validate_morphemes() above. */
 
   /* --- 2. Two-pass deterministic syllable discovery --- */
 
@@ -907,20 +913,17 @@ Tokenizer *tokenizer_build(const char **docs, uint32_t n_docs) {
 
   /* --- 5. Finalize Vocabulary IDs --- */
 
-  /* Ensure ALL morpheme syllables are interned before we fix the stbl->count.
-   */
-  for (uint32_t mi = 0; mi < MORPHEME_SEED_COUNT; mi++) {
-    const char *m = MORPHEME_SEEDS[mi];
-    if (!m)
-      break;
-    uint16_t syls[MAX_SEQ_LEN];
-    (void)syllabify_optimized(t, m, syls, MAX_SEQ_LEN);
-  }
+  /* All morpheme syllables were interned during pass 1. */
 
   uint32_t syl_id_base = 0;
   uint32_t gram_id_base = syl_id_base + t->stbl->count;
   uint32_t morph_id_base = gram_id_base + t->rs->rule_count;
 
+  /* Safety check: verify token_cap won't overflow */
+  if (t->rs->rule_count > UINT32_MAX - 16 - t->stbl->count - MORPHEME_SEED_COUNT) {
+    fprintf(stderr, "[tokenizer_build] token capacity calculation would overflow\n");
+    goto fail;
+  }
   uint32_t token_cap =
       t->rs->rule_count + t->stbl->count + MORPHEME_SEED_COUNT + 16;
   char **tok_strings = calloc(token_cap, sizeof *tok_strings);
@@ -935,9 +938,17 @@ Tokenizer *tokenizer_build(const char **docs, uint32_t n_docs) {
 
   /* Pass 1: Syllables */
   for (uint16_t si = 0; si < t->stbl->count; si++) {
-    tok_strings[n_tokens] = t->stbl->entries[si].text;
-    tok_ids[n_tokens] = syl_id_base + si;
-    n_tokens++;
+    const char *text = t->stbl->entries[si].text;
+    uint16_t tmp_syls[MAX_SEQ_LEN];
+    int n = syllabify_optimized(t, text, tmp_syls, MAX_SEQ_LEN);
+    bool has_unk = false;
+    for (int j = 0; j < n; j++) if (tmp_syls[j] == TOK_UNK) { has_unk = true; break; }
+    
+    if (n > 0 && !has_unk) {
+      tok_strings[n_tokens] = (char *)text;
+      tok_ids[n_tokens] = syl_id_base + si;
+      n_tokens++;
+    }
   }
 
   /* Pass 2: Grammar rules */
@@ -948,21 +959,51 @@ Tokenizer *tokenizer_build(const char **docs, uint32_t n_docs) {
     const char *exp = pruner_expand(t->gp, r->lhs, t->stbl);
     if (!exp || exp[0] == '\0')
       continue;
-    tok_strings[n_tokens] = (char *)exp;
-    tok_ids[n_tokens] = gram_id_base + ri;
-    n_tokens++;
+
+    /* Verify no TOK_UNK in expansion */
+    uint16_t tmp_syls[MAX_SEQ_LEN];
+    int n = syllabify_optimized(t, exp, tmp_syls, MAX_SEQ_LEN);
+    bool has_unk = false;
+    for (int j = 0; j < n; j++) if (tmp_syls[j] == TOK_UNK) { has_unk = true; break; }
+    
+    if (n > 0 && !has_unk) {
+      tok_strings[n_tokens] = (char *)exp;
+      tok_ids[n_tokens] = gram_id_base + ri;
+      n_tokens++;
+    }
   }
 
   /* Pass 3: Morpheme seeds */
+  t->morph_strings = calloc(MORPHEME_SEED_COUNT, sizeof(char *));
   for (uint32_t mi = 0; mi < MORPHEME_SEED_COUNT; mi++) {
     const char *m = MORPHEME_SEEDS[mi];
     if (!m)
       break;
+    
+    char clean_buf[MAX_TOKEN_CHARS];
+    clean_and_normalize_seed(clean_buf, m, sizeof(clean_buf));
+    if (clean_buf[0] == '\0')
+      continue;
+    
     uint16_t syls[MAX_SEQ_LEN];
-    if (syllabify_optimized(t, m, syls, MAX_SEQ_LEN) > 0) {
-      tok_strings[n_tokens] = (char *)m;
-      tok_ids[n_tokens] = morph_id_base + mi;
-      n_tokens++;
+    int n = syllabify_optimized(t, clean_buf, syls, MAX_SEQ_LEN);
+    if (n > 0) {
+      /* Verify no TOK_UNK was produced. If the seed contains characters not in
+       * our SyllableTable (e.g. English definitions mislabeled as Luganda),
+       * we skip the token to prevent [louds_build] warnings and trie holes. */
+      bool has_unk = false;
+      for (int j = 0; j < n; j++) {
+        if (syls[j] == TOK_UNK) {
+          has_unk = true;
+          break;
+        }
+      }
+      if (!has_unk) {
+        t->morph_strings[mi] = strdup(clean_buf);
+        tok_strings[n_tokens] = t->morph_strings[mi];
+        tok_ids[n_tokens] = morph_id_base + mi;
+        n_tokens++;
+      }
     }
   }
 
@@ -973,7 +1014,8 @@ Tokenizer *tokenizer_build(const char **docs, uint32_t n_docs) {
     goto fail;
   }
 
-  /* --- 6. Build LOUDS trie --- */
+  /* --- 6. Finalize Vocab and Build LOUDS Trie --- */
+  t->vocab_size = morph_id_base + MORPHEME_SEED_COUNT;
   t->louds = louds_build((const char **)tok_strings, tok_ids, n_tokens, t->stbl,
                          t->syl);
   free(tok_strings);
@@ -982,47 +1024,7 @@ Tokenizer *tokenizer_build(const char **docs, uint32_t n_docs) {
   if (!t->louds)
     goto fail;
 
-  /* --- 7. Build O(1) reverse-decode table (H-03) --- */
-  /* Highest token id = max of all token ranges */
-  uint32_t max_syl_id = syl_id_base + t->stbl->count;
-  uint32_t max_gram_id = gram_id_base + t->rs->rule_count;
-  uint32_t max_morph_id = morph_id_base + MORPHEME_SEED_COUNT;
-
-  t->vocab_size = max_syl_id;
-  if (max_gram_id > t->vocab_size)
-    t->vocab_size = max_gram_id;
-  if (max_morph_id > t->vocab_size)
-    t->vocab_size = max_morph_id;
-
-  t->id_to_str = calloc(t->vocab_size, sizeof *t->id_to_str);
-  if (!t->id_to_str)
-    goto fail;
-
-  /* Syllable tokens (including special tokens and bytes) */
-  for (uint16_t si = 0; si < t->stbl->count; si++)
-    t->id_to_str[si] = t->stbl->entries[si].text;
-
-  /* Grammar tokens */
-  for (uint32_t ri = 0; ri < t->rs->rule_count; ri++) {
-    Rule *r = &t->rs->rules[ri];
-    if (r->dead)
-      continue;
-    uint32_t tid = gram_id_base + ri;
-    if (tid < t->vocab_size)
-      t->id_to_str[tid] = pruner_expand(t->gp, r->lhs, t->stbl);
-  }
-
-  for (uint32_t mi = 0; mi < MORPHEME_SEED_COUNT; mi++) {
-    const char *m = MORPHEME_SEEDS[mi];
-    if (!m)
-      break;
-    uint16_t syls[MAX_SEQ_LEN];
-    if (syllabify_optimized(t, m, syls, MAX_SEQ_LEN) > 0) {
-      uint32_t tid = morph_id_base + mi;
-      if (tid < t->vocab_size)
-        t->id_to_str[tid] = m;
-    }
-  }
+  tokenizer_rebuild_id_to_str(t);
 
   tokenizer_rebuild_fast_paths(t);
   tokenizer_build_dense_hashes(t); /* Build per-instance dense hash tables */
@@ -1041,6 +1043,12 @@ fail:
 void tokenizer_destroy(Tokenizer *t) {
   if (!t)
     return;
+
+  if (t->morph_strings) {
+    for (uint32_t i = 0; i < MORPHEME_SEED_COUNT; i++)
+      free(t->morph_strings[i]);
+    free(t->morph_strings);
+  }
 
   /* Free id_to_str pointer array first (strings are owned by components) */
   free(t->id_to_str);
@@ -1477,41 +1485,23 @@ Tokenizer *tokenizer_load(const char *path) {
   t->syl->frozen = true;
   stbl_freeze(t->stbl); /* Ensure table is frozen to match build behavior */
 
-  /* 6. Rebuild id_to_str mapping for decoding */
-  t->id_to_str = calloc(t->vocab_size, sizeof(char *));
-  if (t->id_to_str) {
-    uint32_t gram_id_base = t->stbl->count;
-    uint32_t morph_id_base = gram_id_base + t->rs->rule_count;
-
-    /* Syllables */
-    for (uint16_t si = 0; si < t->stbl->count; si++) {
-      t->id_to_str[si] = t->stbl->entries[si].text;
-    }
-    /* Grammar rules - skip dead rules to match build behavior */
-    if (t->gp_expansions) {
-      for (uint32_t ri = 0; ri < t->rs->rule_count; ri++) {
-        Rule *r = &t->rs->rules[ri];
-        if (r->dead)
-          continue;
-        uint32_t tid = gram_id_base + ri;
-        if (tid < t->vocab_size)
-          t->id_to_str[tid] = t->gp_expansions[ri];
-      }
-    }
-    /* Morphemes - match build: only add if they syllabify */
-    for (uint32_t mi = 0; mi < MORPHEME_SEED_COUNT; mi++) {
-      const char *m = MORPHEME_SEEDS[mi];
-      if (!m)
-        break;
-      uint16_t syls[MAX_SEQ_LEN];
-      if (syllabify_optimized(t, m, syls, MAX_SEQ_LEN) > 0) {
-        uint32_t tid = morph_id_base + mi;
-        if (tid < t->vocab_size) {
-          t->id_to_str[tid] = m;
-        }
-      }
+  /* 6. Re-seed and clean hardcoded morphemes to rebuild id_to_str */
+  t->morph_strings = calloc(MORPHEME_SEED_COUNT, sizeof(char *));
+  for (uint32_t mi = 0; mi < MORPHEME_SEED_COUNT; mi++) {
+    const char *m = MORPHEME_SEEDS[mi];
+    if (!m) break;
+    
+    char clean_buf[MAX_TOKEN_CHARS];
+    clean_and_normalize_seed(clean_buf, m, sizeof(clean_buf));
+    if (clean_buf[0] == '\0') continue;
+    
+    uint16_t syls[MAX_SEQ_LEN];
+    if (syllabify_optimized(t, clean_buf, syls, MAX_SEQ_LEN) > 0) {
+      t->morph_strings[mi] = strdup(clean_buf);
     }
   }
+
+  tokenizer_rebuild_id_to_str(t);
 
   tokenizer_rebuild_fast_paths(t);
   tokenizer_build_dense_hashes(t);

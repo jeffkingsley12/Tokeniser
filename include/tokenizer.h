@@ -346,6 +346,7 @@ typedef struct {
     uint32_t cv_dense_vals[DENSE_HASH_SIZE];
     uint16_t sp_dense_keys[DENSE_HASH_SIZE];
     uint32_t sp_dense_vals[DENSE_HASH_SIZE];
+    char   **morph_strings;
 } Tokenizer;
 
 /* Mutable symbol sequence node used during Re-Pair training.
