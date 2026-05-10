@@ -285,6 +285,12 @@ LOUDS *louds_build(const char **tokens, const uint32_t *token_ids,
   uint32_t skipped_unk = 0;
 
   for (uint32_t t = 0; t < n_tokens; t++) {
+    /* Skip special tokens (ID 0..SPECIAL_TOKENS_COUNT-1) because they are
+     * fallbacks/meta-tokens, not searchable text. ID 0 (<unk>) is the fallback
+     * token and doesn't need to be in the LOUDS trie. */
+    if (token_ids[t] < SPECIAL_TOKENS_COUNT)
+      continue;
+
     int n = syllabify(s, tokens[t], syls, MAX_SYLLABLES);
     if (n <= 0)
       continue;

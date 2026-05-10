@@ -1,5 +1,0 @@
-Tokeniser Benchmark Suite
-Timestamp: 20260510_093526
-
-  OS: Linux
-  Kernel: 6.12.86+deb13-amd64

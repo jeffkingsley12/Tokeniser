@@ -83,6 +83,10 @@ tokenizer_mmap: dirs $(MMAP_OBJS)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(MMAP_OBJS) $(LDFLAGS)
 
 # Compile source files to build/hybrid (release)
+$(BUILD_HYBRID)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
+
 $(BUILD_HYBRID)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
@@ -130,6 +134,9 @@ $(TEST_DIR)/test_truth_layer: $(TEST_DIR)/test_truth_layer.c $(CORE_SOURCES)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
 $(TEST_DIR)/test_lexical_domain: $(TEST_DIR)/test_lexical_domain.c $(CORE_SOURCES)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+
+$(TEST_DIR)/test_production_stress: $(TEST_DIR)/test_production_stress.c $(CORE_SOURCES)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
 # Build all test binaries

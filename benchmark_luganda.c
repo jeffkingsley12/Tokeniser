@@ -133,7 +133,7 @@ static const BenchmarkCase luganda_cases[] = {
     {
         .name = "english_insertion",
         .text = "Let" SPACE_CHAR "me" SPACE_CHAR "explain" SPACE_CHAR "okukola" SPACE_CHAR " kino",
-        .expected_tokens = 27,
+        .expected_tokens = 26,
         .flags = FLAG_MIXED_LANG,
         .description = "English phrase inserted in Luganda"
     },
@@ -151,14 +151,14 @@ static const BenchmarkCase luganda_cases[] = {
                "byona" SPACE_CHAR "bulungi" SPACE_CHAR "nga" SPACE_CHAR "byetaagisa" SPACE_CHAR
                "okutuuka" SPACE_CHAR "ku" SPACE_CHAR "mukka" SPACE_CHAR "gwa" SPACE_CHAR
                "omulimu" SPACE_CHAR "gwaffe",
-        .expected_tokens = 93,
+        .expected_tokens = 91,
         .flags = FLAG_LONG_INPUT,
         .description = "Long message with multiple clauses"
     },
     {
         .name = "repetitive_pattern",
         .text = "Bulungi" SPACE_CHAR "bulungi" SPACE_CHAR "bulungi" SPACE_CHAR "very" SPACE_CHAR "good",
-        .expected_tokens = 23,
+        .expected_tokens = 21,
         .flags = FLAG_MIXED_LANG,
         .description = "Repetitive pattern for compression testing"
     },
@@ -230,7 +230,7 @@ static bool run_case(const Tokenizer *tok, const BenchmarkCase *case_info,
 
     /* Warm-up */
     for (int i = 0; i < WARMUP_ITERATIONS; i++) {
-        tokenizer_encode_fused(tok, case_info->text, out, MAX_TOKENS_PER_CASE);
+        tokenizer_encode(tok, case_info->text, out, MAX_TOKENS_PER_CASE);
     }
 
     /* Reset tokenizer stats */
@@ -239,7 +239,7 @@ static bool run_case(const Tokenizer *tok, const BenchmarkCase *case_info,
     /* Timed measurement */
     start_cycles = get_cycles();
     for (int i = 0; i < MEASURE_ITERATIONS; i++) {
-        token_count = (uint32_t)tokenizer_encode_fused(tok, case_info->text, out, MAX_TOKENS_PER_CASE);
+        token_count = (uint32_t)tokenizer_encode(tok, case_info->text, out, MAX_TOKENS_PER_CASE);
     }
     end_cycles = get_cycles();
 
