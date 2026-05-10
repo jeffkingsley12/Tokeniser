@@ -187,6 +187,21 @@ int main(int argc, char *argv[])
     uint32_t     n_docs;
     Corpus      *corpus = NULL;
 
+    if (argc >= 3 && strcmp(argv[1], "--syllables") == 0) {
+        /* Syllable-only mode for diagnostics */
+        Tokenizer *tok = tokenizer_build(MINI_CORPUS, 36);
+        if (!tok) return 1;
+        uint16_t syls[256];
+        int n = syllabify(tok->syl, argv[2], syls, 256);
+        printf("Syllables for '%s': ", argv[2]);
+        for (int i = 0; i < n; i++) {
+            printf("syllable_id: %u ", syls[i]);
+        }
+        printf("\n");
+        tokenizer_destroy(tok);
+        return 0;
+    }
+
     if (argc >= 2) {
         printf("Loading corpus from: %s\n", argv[1]);
         corpus = corpus_load(argv[1], 0, 0, 0);

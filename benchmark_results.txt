@@ -1,0 +1,12 @@
+Testing simple tokenizer functionality...
+Model file not found, building from mini corpus...
+Built tokenizer from 9 documents
+Tokenizer loaded successfully
+Test text: "okusoma nnyo"
+Token count: 4
+Tokens: [oku] [soma] [ ] [nnyo] 
+
+Testing performance...
+Completed 10000 iterations in 0.002 seconds
+Throughput: 5060729 ops/sec
+Tokenizer destroyed successfully

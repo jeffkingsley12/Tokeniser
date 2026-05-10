@@ -24,7 +24,7 @@ def syllabify_word(word):
     """Use tokenizer_demo to syllabify a word and extract debug info."""
     try:
         result = subprocess.run(
-            ['./tokenizer_demo', word],
+            ['./tokenizer_demo', '--syllables', word],
             capture_output=True,
             text=True,
             timeout=5
@@ -124,6 +124,6 @@ def extract_louds_patterns():
             print(f"  {word:20} → {seq}")
 
 if __name__ == "__main__":
-    # analyze_discrepancies()
+    analyze_discrepancies()
     check_trie_mismatch()
-    extract_louds_patterns()
+    # extract_louds_patterns() # Removed hardcoded patterns as they are now obsolete

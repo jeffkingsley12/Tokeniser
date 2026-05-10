@@ -1,0 +1,38 @@
+=== Syllabifier Mode Comparison Test ===
+
+Test corpus:
+  - ayagala
+  - okwéŋŋa
+  - Ŋŋooyo
+  - lwadde
+  - gwanga
+  - dwaniro
+  - nyakatura
+  - nnyini
+
+Compiling byte-table mode...
+✅ Byte-table mode compiled
+
+Compiling hybrid mode...
+✅ Hybrid mode compiled
+
+Compiling predicate mode...
+✅ Predicate mode compiled
+
+All three modes compiled successfully!
+
+Next: Link and test each mode on your corpus to verify identical output:
+
+  # Build with byte-table mode
+  make MODE=fast && ./tokenizer_demo < corpus.txt > output_table.txt
+
+  # Build with hybrid mode (default, recommended)
+  make && ./tokenizer_demo < corpus.txt > output_hybrid.txt
+
+  # Build with predicate mode
+  make MODE=predicates && ./tokenizer_demo < corpus.txt > output_pred.txt
+
+  # Compare
+  diff output_table.txt output_hybrid.txt  # Should be identical
+  diff output_hybrid.txt output_pred.txt   # Should be identical
+

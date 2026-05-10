@@ -64,3 +64,116 @@ Project: /home/jeff/Projects/c/Tokeniser
     ✅ PASS: All tokens decode successfully
     ...
 [1;33m▶ Serialization & Security[0m
+[0;32m✓ PASS: serialization_security (87486 lines of output)[0m
+    [seed] ASCII orphan sweep: 0 new entries seeded (stbl now has 761 entries)
+    [louds_build] WARNING: skipping token "[UNK]" (id=0) — syllabification contains TOK_UNK; fix: ensure stbl covers all characters before louds_build() is called.
+    [louds_build] 1 token(s) skipped due to TOK_UNK in syllable sequence — vocabulary is incomplete.
+    [louds_build] Split CSR: 4330 nodes, 4329 edges
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 217 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 96 entries, sp_dense: 0 entries
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 227 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 106 entries, sp_dense: 0 entries
+    [seed] ASCII orphan sweep: 0 new entries seeded (stbl now has 761 entries)
+    [louds_build] WARNING: skipping token "[UNK]" (id=0) — syllabification contains TOK_UNK; fix: ensure stbl covers all characters before louds_build() is called.
+    [louds_build] 1 token(s) skipped due to TOK_UNK in syllable sequence — vocabulary is incomplete.
+    [louds_build] Split CSR: 4330 nodes, 4329 edges
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 217 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 96 entries, sp_dense: 0 entries
+    🔒 Tokenizer Serialization Security Test Suite
+    ===============================================
+    
+    🧪 Testing normal save/load cycle
+    ✅ PASS: Create test tokenizer
+    ✅ PASS: Save tokenizer successfully
+    ...
+[1;33m▶ Corruption/Robustness Test[0m
+[0;32m✓ PASS: corruption_minimal (21 lines of output)[0m
+    [seed] ASCII orphan sweep: 0 new entries seeded (stbl now has 761 entries)
+    [louds_build] WARNING: skipping token "[UNK]" (id=0) — syllabification contains TOK_UNK; fix: ensure stbl covers all characters before louds_build() is called.
+    [louds_build] 1 token(s) skipped due to TOK_UNK in syllable sequence — vocabulary is incomplete.
+    [louds_build] Split CSR: 4327 nodes, 4326 edges
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 217 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 96 entries, sp_dense: 0 entries
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 227 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 106 entries, sp_dense: 0 entries
+    [load] bad magic
+    [load] CRC mismatch: expected 282ed83b, got 4ee4c07b
+    [load] CRC mismatch: expected 00000000, got 0bf75010
+    🔍 Minimal Corruption Detection Test
+    ====================================
+    ✅ Created test tokenizer
+    ✅ Saved tokenizer
+    ✅ Normal load works
+    ✅ Magic corruption detected
+    ✅ Byte corruption detected
+    ✅ Truncation detected
+    
+    ...
+[1;33m▶ Regression Fixes Test[0m
+[0;32m✓ PASS: fixes (26 lines of output)[0m
+    tokenizer_load: fopen: No such file or directory
+    Failed to load tokenizer
+    🔧 Testing All Four Targeted Fixes
+    ===================================
+    
+    🧪 Testing UTF-8 Safe Truncation (Fix 1)
+    ===========================================
+    UTF-8 safe truncation is used in load_corpus_file().
+    It prevents splitting multi-byte sequences when lines are truncated.
+    This fix is defensive and activates only when lines exceed LINE_BUF_SIZE.
+    ✅ Safe truncation helper implemented and ready
+    
+    🧪 Testing UTF-8 Atomic Encoding (Emoji Fix)
+    ===============================================
+    🧪 Testing Bounds Checking (Fix 4)
+    ======================================
+    Bounds checking is passive - it only triggers on actual overflow.
+    Since we're using normal vocabulary sizes, bounds checking should not interfere.
+    ✅ No bounds violations detected in normal operation
+    
+    ...
+
+[1;33m▶ Syllabifier Modes Test (Louds/Viterbi/Hybrid)[0m
+[0;32m✓ PASS: syllabifier_modes[0m
+    === Syllabifier Mode Comparison Test ===
+    
+    Test corpus:
+      - ayagala
+      - okwéŋŋa
+      - Ŋŋooyo
+      - lwadde
+      - gwanga
+      - dwaniro
+      - nyakatura
+      - nnyini
+    
+    Compiling byte-table mode...
+    ✅ Byte-table mode compiled
+    
+    Compiling hybrid mode...
+    ✅ Hybrid mode compiled
+    
+    Compiling predicate mode...
+    ✅ Predicate mode compiled
+
+  Available test source files:
+    - test_benchmark_simple.c (33 lines)
+    - test_bugs.c (38 lines)
+    - test_corruption_minimal.c (101 lines)
+    - test_determinism.c (128 lines)
+    - test_edge_cases.c (477 lines)
+    - test_edge_cases_simple.c (109 lines)
+    - test_fixes.c (122 lines)
+    - test_grapheme.c (85 lines)
+    - test_lexical_domain.c (174 lines)
+    - test_serialization_security.c (388 lines)
+    - test_simple_tokenizer.c (73 lines)
+    - test_truth_layer.c (96 lines)
+    - test_utf8.c (181 lines)
+
+Test Results:
+  \033[0;32mPassed:\033[0m  7
+  \033[0;31mFailed:\033[0m  0
+  \033[1;33mSkipped:\033[0m 0
+  Total:   7
+[0;32mAll tests passed![0m
