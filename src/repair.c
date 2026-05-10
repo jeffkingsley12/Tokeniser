@@ -280,15 +280,15 @@ static void remove_occurrence(RePairState *rs, uint32_t slot, SeqNode *node) {
 
 /* SlabAllocator */
 #define SLAB_BLOCK  65536
-typedef struct SlabBlockBody {
-    SlabBlock hdr;
+typedef struct RePairSlabBlockBody {
+    RePairSlabBlock hdr;
     SeqNode nodes[SLAB_BLOCK];
-} SlabBlockBody;
+} RePairSlabBlockBody;
 
 static SeqNode *slab_alloc(RePairState *rs) {
-    SlabBlockBody *body = (SlabBlockBody *)rs->slab_head;
+    RePairSlabBlockBody *body = (RePairSlabBlockBody *)rs->slab_head;
     if (!body || body->hdr.used >= SLAB_BLOCK) {
-        SlabBlockBody *nb = calloc(1, sizeof *nb);
+        RePairSlabBlockBody *nb = calloc(1, sizeof *nb);
         if (!nb) return NULL;
         nb->hdr.next = rs->slab_head;
         nb->hdr.used = 0;
@@ -299,9 +299,9 @@ static SeqNode *slab_alloc(RePairState *rs) {
 }
 
 static void slab_free_all(RePairState *rs) {
-    SlabBlock *b = rs->slab_head;
+    RePairSlabBlock *b = rs->slab_head;
     while (b) {
-        SlabBlock *nx = b->next;
+        RePairSlabBlock *nx = b->next;
         free(b);
         b = nx;
     }

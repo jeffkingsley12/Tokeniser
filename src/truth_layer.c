@@ -145,15 +145,15 @@ static int grow_nodes(TruthTrie *tt, uint32_t need) {
       return -1;
     new_cap *= 2;
   }
-  TrieNode *p = realloc(tt->nodes, new_cap * sizeof(TrieNode));
+  SylTrieNode *p = realloc(tt->nodes, new_cap * sizeof(SylTrieNode));
   if (!p)
     return -1;
-  memset(p + tt->node_cap, 0, (new_cap - tt->node_cap) * sizeof(TrieNode));
+  memset(p + tt->node_cap, 0, (new_cap - tt->node_cap) * sizeof(SylTrieNode));
 
   uint16_t *d = realloc(tt->depths, new_cap * sizeof(uint16_t));
   if (!d) {
     /* Roll back nodes allocation to maintain consistency with depths */
-    TrieNode *rollback = realloc(p, tt->node_cap * sizeof(TrieNode));
+    SylTrieNode *rollback = realloc(p, tt->node_cap * sizeof(SylTrieNode));
     if (rollback) tt->nodes = rollback;
     else tt->nodes = p; /* Keep p if rollback fails, but cap stays old */
     return -1;
@@ -174,10 +174,10 @@ static int grow_edges(TruthTrie *tt, uint32_t need) {
       return -1;
     new_cap *= 2;
   }
-  TrieEdge *p = realloc(tt->edges, new_cap * sizeof(TrieEdge));
+  SylTrieEdge *p = realloc(tt->edges, new_cap * sizeof(SylTrieEdge));
   if (!p)
     return -1;
-  memset(p + tt->edge_cap, 0, (new_cap - tt->edge_cap) * sizeof(TrieEdge));
+  memset(p + tt->edge_cap, 0, (new_cap - tt->edge_cap) * sizeof(SylTrieEdge));
   tt->edges = p;
   tt->edge_cap = new_cap;
   return 0;
@@ -193,7 +193,7 @@ TruthTrie *truth_trie_create(void) {
   if (!tt)
     return NULL;
 
-  tt->nodes = calloc(TRIE_INITIAL_NODES, sizeof(TrieNode));
+  tt->nodes = calloc(TRIE_INITIAL_NODES, sizeof(SylTrieNode));
   if (!tt->nodes) {
     free(tt);
     return NULL;
@@ -201,7 +201,7 @@ TruthTrie *truth_trie_create(void) {
   tt->node_count = 1; /* root = node 0 */
   tt->node_cap = TRIE_INITIAL_NODES;
 
-  tt->edges = calloc(TRIE_INITIAL_EDGES, sizeof(TrieEdge));
+  tt->edges = calloc(TRIE_INITIAL_EDGES, sizeof(SylTrieEdge));
   if (!tt->edges) {
     free(tt->nodes);
     free(tt);
@@ -260,7 +260,7 @@ int truth_trie_insert(TruthTrie *tt, const uint16_t *sids, size_t len,
     /* General path: linear scan of the current node's edges.
      * (Edge count is small for this trie — linear scan is fine.) */
     if (next == UINT32_MAX) {
-      TrieNode *nd = &tt->nodes[node];
+      SylTrieNode *nd = &tt->nodes[node];
       for (uint16_t j = 0; j < nd->edge_count; j++) {
         if (tt->edges[nd->first_edge + j].label == sid) {
           next = tt->edges[nd->first_edge + j].next_node;
@@ -286,7 +286,7 @@ int truth_trie_insert(TruthTrie *tt, const uint16_t *sids, size_t len,
          * Edges for a node must be contiguous — only valid when
          * added sequentially during construction (which is true
          * here since we build depth-first, left-to-right). */
-        TrieNode *nd = &tt->nodes[node];
+        SylTrieNode *nd = &tt->nodes[node];
         if (nd->edge_count == 0) {
           /* First edge for this node: claim the next free slot */
           nd->first_edge = tt->edge_count;
@@ -303,7 +303,7 @@ int truth_trie_insert(TruthTrie *tt, const uint16_t *sids, size_t len,
 
         if (insert_pos < tt->edge_count) {
           memmove(&tt->edges[insert_pos + 1], &tt->edges[insert_pos],
-                  (tt->edge_count - insert_pos) * sizeof(TrieEdge));
+                  (tt->edge_count - insert_pos) * sizeof(SylTrieEdge));
           for (uint32_t n = 0; n < tt->node_count; n++) {
             if (tt->nodes[n].edge_count > 0 && tt->nodes[n].first_edge >= insert_pos && n != node) {
               tt->nodes[n].first_edge++;
@@ -371,7 +371,7 @@ int truth_trie_compute_failure_links(TruthTrie *tt) {
 
   while (head < tail) {
     uint32_t u = queue[head++];
-    TrieNode *nd_u = &tt->nodes[u];
+    SylTrieNode *nd_u = &tt->nodes[u];
 
     for (uint16_t i = 0; i < nd_u->edge_count; i++) {
       uint16_t lbl = tt->edges[nd_u->first_edge + i].label;
@@ -381,7 +381,7 @@ int truth_trie_compute_failure_links(TruthTrie *tt) {
       while (f != 0) {
         /* Search lbl in f's edges */
         uint32_t next_f = UINT32_MAX;
-        TrieNode *nd_f = &tt->nodes[f];
+        SylTrieNode *nd_f = &tt->nodes[f];
         for (uint16_t j = 0; j < nd_f->edge_count; j++) {
           if (tt->edges[nd_f->first_edge + j].label == lbl) {
             next_f = tt->edges[nd_f->first_edge + j].next_node;
@@ -426,7 +426,7 @@ int truth_match_ids(const TruthTrie *tt, const uint16_t *syllable_ids,
     if (node == 0 && sid < BASE_SYMBOL_OFFSET) {
       next = tt->first_syl[sid];
     } else {
-      TrieNode *nd = &tt->nodes[node];
+      SylTrieNode *nd = &tt->nodes[node];
       for (uint16_t j = 0; j < nd->edge_count; j++) {
         if (tt->edges[nd->first_edge + j].label == sid) {
           next = tt->edges[nd->first_edge + j].next_node;
@@ -440,7 +440,7 @@ int truth_match_ids(const TruthTrie *tt, const uint16_t *syllable_ids,
       if (node == 0 && sid < BASE_SYMBOL_OFFSET) {
         next = tt->first_syl[sid];
       } else {
-        TrieNode *nd = &tt->nodes[node];
+        SylTrieNode *nd = &tt->nodes[node];
         for (uint16_t j = 0; j < nd->edge_count; j++) {
           if (tt->edges[nd->first_edge + j].label == sid) {
             next = tt->edges[nd->first_edge + j].next_node;
@@ -492,7 +492,7 @@ int aho_corasick_find_matches(const TruthTrie *tt,
     if (node == 0 && sid < BASE_SYMBOL_OFFSET) {
       next = tt->first_syl[sid];
     } else {
-      TrieNode *nd = &tt->nodes[node];
+      SylTrieNode *nd = &tt->nodes[node];
       for (uint16_t j = 0; j < nd->edge_count; j++) {
         if (tt->edges[nd->first_edge + j].label == sid) {
           next = tt->edges[nd->first_edge + j].next_node;
@@ -506,7 +506,7 @@ int aho_corasick_find_matches(const TruthTrie *tt,
       if (node == 0 && sid < BASE_SYMBOL_OFFSET) {
         next = tt->first_syl[sid];
       } else {
-        TrieNode *nd = &tt->nodes[node];
+        SylTrieNode *nd = &tt->nodes[node];
         for (uint16_t j = 0; j < nd->edge_count; j++) {
           if (tt->edges[nd->first_edge + j].label == sid) {
             next = tt->edges[nd->first_edge + j].next_node;

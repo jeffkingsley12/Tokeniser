@@ -33,6 +33,7 @@ int tokenizer_save_mmap(const Tokenizer *t, const char *path) {
      * for model building. Mmap is primarily used for read-only loading in
      * production.  Stub retained to satisfy link-time references. */
     (void)t; (void)path;
+    fprintf(stderr, "[tokenizer_save_mmap] not implemented — use tokenizer_save()\n");
     return -1;
 }
 
@@ -42,7 +43,7 @@ static int verify_mmap_header(const MmapHeader *hdr, size_t file_size) {
     if (hdr->version < 14 || hdr->version > 15) return -1;   /* expect v14 (CSR) or v15 (Truth) */
     
     /* Security Fix: data_size covers the header + payload, but not the 4-byte CRC at the end */
-    if (hdr->data_size + 4 != (uint64_t)file_size) return -1;
+    if (file_size < 4 || hdr->data_size != (uint64_t)(file_size - 4)) return -1;
 
     /* v15: Reproducibility check (non-fatal: warn but do not abort) */
     if (hdr->version >= 15) {
@@ -115,7 +116,7 @@ static MmapTokenizer *tokenizer_load_mmap_internal(void *base, size_t size) {
         uint64_t l_size = (uint64_t)sizeof(LOUDS);
 
         uint64_t off_row_ptr = ALIGN8(l_size);
-        uint64_t off_edges   = ALIGN8(off_row_ptr + (uint64_t)(l->node_count + 1) * 4);
+        uint64_t off_edges   = ALIGN8(off_row_ptr + ((uint64_t)l->node_count + 1) * 4);
         uint64_t off_next    = ALIGN8(off_edges   + (uint64_t)l->edge_count * 2);
         uint64_t off_term    = ALIGN8(off_next    + (uint64_t)l->edge_count * 4);
         uint64_t louds_total = off_term    + (uint64_t)l->edge_count * 4;

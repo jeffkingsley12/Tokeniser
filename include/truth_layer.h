@@ -83,8 +83,8 @@ typedef struct {
  * root indexed by syllable ID.  Only valid for syl_id < BASE_SYMBOL_OFFSET.
  * ----------------------------------------------------------------------- */
 typedef struct {
-    TrieNode   *nodes;
-    TrieEdge   *edges;
+    SylTrieNode   *nodes;
+    SylTrieEdge   *edges;
     uint32_t    node_count;
     uint32_t    edge_count;
     uint32_t    node_cap;   /* allocated capacity of nodes[] */

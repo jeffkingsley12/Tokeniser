@@ -15,31 +15,31 @@
 #include <stddef.h>
 
 /* Hash table entry for pair frequencies */
-typedef struct PairEntry {
+typedef struct CompressPairEntry {
     uint32_t pair;          /* packed pair: (left << 16) | right */
     uint32_t freq;          /* frequency of this pair */
     uint32_t new_symbol;    /* symbol assigned to this pair */
-    struct PairEntry *next;  /* next entry in hash bucket */
-} PairEntry;
+    struct CompressPairEntry *next;  /* next entry in hash bucket */
+} CompressPairEntry;
 
 /* Hash table for pair counting */
 typedef struct {
-    PairEntry **buckets;
+    CompressPairEntry **buckets;
     uint32_t size;
     uint32_t count;
     uint32_t mask;  /* size - 1 for fast modulo */
 } PairHashTable;
 
 /* Slab allocator for frequent small allocations */
-typedef struct SlabBlock {
-    struct SlabBlock *next;
+typedef struct CompressSlabBlock {
+    struct CompressSlabBlock *next;
     uint8_t data[4096];  /* 4KB slabs */
     size_t used;
-} SlabBlock;
+} CompressSlabBlock;
 
 typedef struct {
-    SlabBlock *current;
-    SlabBlock *head;  /* For cleanup */
+    CompressSlabBlock *current;
+    CompressSlabBlock *head;  /* For cleanup */
 } SlabAllocator;
 
 /* Reusable compression context */
@@ -65,8 +65,8 @@ uint32_t *compress_get_symbol_stack(CompressContext *ctx, size_t min_capacity);
 
 /* Hash table operations */
 void pair_table_clear(PairHashTable *ht);
-PairEntry *pair_table_find(PairHashTable *ht, uint32_t pair);
-PairEntry *pair_table_insert(PairHashTable *ht, uint32_t pair, uint32_t freq);
+CompressPairEntry *pair_table_find(PairHashTable *ht, uint32_t pair);
+CompressPairEntry *pair_table_insert(PairHashTable *ht, uint32_t pair, uint32_t freq);
 
 /* Slab allocator operations */
 void slab_reset(SlabAllocator *slab);

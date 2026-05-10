@@ -597,6 +597,8 @@ void louds_destroy(LOUDS *l) {
   free(l->next_node);
   free(l->terminals);
 
+  free(l->louds_bv);
+
   free(l);
 }
 

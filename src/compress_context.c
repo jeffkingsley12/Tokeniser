@@ -23,7 +23,7 @@ static PairHashTable *pair_table_create(uint32_t size) {
     if (!ht) return NULL;
     
     size = next_pow2(size);
-    ht->buckets = calloc(size, sizeof(PairEntry *));
+    ht->buckets = calloc(size, sizeof(CompressPairEntry *));
     if (!ht->buckets) {
         free(ht);
         return NULL;
@@ -40,9 +40,9 @@ static void pair_table_destroy(PairHashTable *ht) {
     if (!ht) return;
     
     for (uint32_t i = 0; i < ht->size; i++) {
-        PairEntry *entry = ht->buckets[i];
+        CompressPairEntry *entry = ht->buckets[i];
         while (entry) {
-            PairEntry *next = entry->next;
+            CompressPairEntry *next = entry->next;
             free(entry);
             entry = next;
         }
@@ -53,14 +53,14 @@ static void pair_table_destroy(PairHashTable *ht) {
 }
 
 /* Clear hash table — O(size + count) due to per-bucket scan and per-entry free.
- * TODO: allocate PairEntry from the slab for true O(1) clear via slab_reset. */
+ * TODO: allocate CompressPairEntry from the slab for true O(1) clear via slab_reset. */
 void pair_table_clear(PairHashTable *ht) {
     if (!ht) return;
     
     for (uint32_t i = 0; i < ht->size; i++) {
-        PairEntry *entry = ht->buckets[i];
+        CompressPairEntry *entry = ht->buckets[i];
         while (entry) {
-            PairEntry *next = entry->next;
+            CompressPairEntry *next = entry->next;
             free(entry);
             entry = next;
         }
@@ -70,11 +70,11 @@ void pair_table_clear(PairHashTable *ht) {
 }
 
 /* Find pair in hash table */
-PairEntry *pair_table_find(PairHashTable *ht, uint32_t pair) {
+CompressPairEntry *pair_table_find(PairHashTable *ht, uint32_t pair) {
     if (!ht) return NULL;
     
     uint32_t hash = ht_hash(pair, ht->mask);
-    PairEntry *entry = ht->buckets[hash];
+    CompressPairEntry *entry = ht->buckets[hash];
     
     while (entry) {
         if (entry->pair == pair) {
@@ -86,13 +86,13 @@ PairEntry *pair_table_find(PairHashTable *ht, uint32_t pair) {
 }
 
 /* Insert pair into hash table */
-PairEntry *pair_table_insert(PairHashTable *ht, uint32_t pair, uint32_t freq) {
+CompressPairEntry *pair_table_insert(PairHashTable *ht, uint32_t pair, uint32_t freq) {
     if (!ht) return NULL;
     
     uint32_t hash = ht_hash(pair, ht->mask);
     
     /* Check if already exists */
-    PairEntry *entry = ht->buckets[hash];
+    CompressPairEntry *entry = ht->buckets[hash];
     while (entry) {
         if (entry->pair == pair) {
             entry->freq += freq;
@@ -104,13 +104,13 @@ PairEntry *pair_table_insert(PairHashTable *ht, uint32_t pair, uint32_t freq) {
     /* Create new entry */
     if (ht->count >= ht->size * 3 / 4) {
         uint32_t new_size = ht->size * 2;
-        PairEntry **new_buckets = calloc(new_size, sizeof(PairEntry *));
+        CompressPairEntry **new_buckets = calloc(new_size, sizeof(CompressPairEntry *));
         if (new_buckets) {
             uint32_t new_mask = new_size - 1;
             for (uint32_t i = 0; i < ht->size; i++) {
-                PairEntry *curr = ht->buckets[i];
+                CompressPairEntry *curr = ht->buckets[i];
                 while (curr) {
-                    PairEntry *next = curr->next;
+                    CompressPairEntry *next = curr->next;
                     uint32_t h = ht_hash(curr->pair, new_mask);
                     curr->next = new_buckets[h];
                     new_buckets[h] = curr;
@@ -125,7 +125,7 @@ PairEntry *pair_table_insert(PairHashTable *ht, uint32_t pair, uint32_t freq) {
         }
     }
 
-    entry = malloc(sizeof(PairEntry));
+    entry = malloc(sizeof(CompressPairEntry));
     if (!entry) return NULL;
     
     entry->pair = pair;
@@ -143,7 +143,7 @@ static SlabAllocator *slab_create(void) {
     SlabAllocator *slab = malloc(sizeof(SlabAllocator));
     if (!slab) return NULL;
     
-    slab->current = malloc(sizeof(SlabBlock));
+    slab->current = malloc(sizeof(CompressSlabBlock));
     if (!slab->current) {
         free(slab);
         return NULL;
@@ -160,9 +160,9 @@ static SlabAllocator *slab_create(void) {
 static void slab_destroy(SlabAllocator *slab) {
     if (!slab) return;
     
-    SlabBlock *block = slab->head;
+    CompressSlabBlock *block = slab->head;
     while (block) {
-        SlabBlock *next = block->next;
+        CompressSlabBlock *next = block->next;
         free(block);
         block = next;
     }
@@ -175,9 +175,9 @@ void slab_reset(SlabAllocator *slab) {
     if (!slab) return;
     
     /* Free all but the first slab */
-    SlabBlock *block = slab->head->next;
+    CompressSlabBlock *block = slab->head->next;
     while (block) {
-        SlabBlock *next = block->next;
+        CompressSlabBlock *next = block->next;
         free(block);
         block = next;
     }
@@ -202,7 +202,7 @@ void *slab_alloc(SlabAllocator *slab, size_t size) {
     
     if (slab->current->used + size > sizeof(slab->current->data)) {
         /* Need new slab */
-        SlabBlock *new_block = malloc(sizeof(SlabBlock));
+        CompressSlabBlock *new_block = malloc(sizeof(CompressSlabBlock));
         if (!new_block) return NULL;
         
         new_block->next = NULL;

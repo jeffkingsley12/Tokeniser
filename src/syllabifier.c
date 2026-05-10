@@ -473,17 +473,33 @@ uint16_t stbl_intern(SyllableTable *t, const char *text) {
   if (!text || !*text)
     return UINT16_MAX;
   
-  /* Enforce frozen semantics during inference */
-  if (t->frozen) {
-    return TOK_UNK;  /* No mutation allowed when frozen */
+  uint32_t mask = 8191u;
+  uint32_t h = stbl_hash(text) & mask;
+
+  for (uint32_t probe = 0; probe < 8192; probe++) {
+    uint32_t slot = (h + probe) & mask;
+    if (!t->ht_used[slot]) {
+      if (t->frozen) return TOK_UNK;
+      
+      uint16_t id = (uint16_t)t->count;
+      if (id >= BASE_SYMBOL_OFFSET) return UINT16_MAX;
+
+      t->count++;
+
+      strncpy(t->entries[id].text, text, MAX_TOKEN_CHARS - 1);
+      t->entries[id].text[MAX_TOKEN_CHARS - 1] = '\0';
+      t->entries[id].id = id;
+
+      t->ht_used[slot] = 1;
+      t->ht_keys[slot] = id;
+      strncpy(t->ht_text[slot], text, MAX_TOKEN_CHARS - 1);
+      t->ht_text[slot][MAX_TOKEN_CHARS - 1] = '\0';
+      return id;
+    }
+    if (strcmp(t->ht_text[slot], text) == 0)
+      return t->ht_keys[slot];
   }
-  
-  /* Check if already present */
-  uint16_t existing = stbl_lookup(t, text);
-  if (existing != UINT16_MAX)
-    return existing;
-  /* Otherwise intern at next available ID */
-  return stbl_intern_fixed(t, text, (uint16_t)t->count);
+  return UINT16_MAX;
 }
 
 uint16_t stbl_intern_fixed(SyllableTable *t, const char *text, uint16_t id) {
@@ -517,8 +533,8 @@ uint16_t stbl_intern_fixed(SyllableTable *t, const char *text, uint16_t id) {
       }
 
       /* Update t->count to be at least id + 1. */
-      if (id >= t->count)
-        t->count = (uint16_t)(id + 1u);
+      if (id + 1u > t->count)
+        t->count = (uint32_t)id + 1u;
 
       strncpy(t->entries[id].text, text, MAX_TOKEN_CHARS - 1);
       t->entries[id].text[MAX_TOKEN_CHARS - 1] = '\0';
@@ -1070,8 +1086,8 @@ int consume_syllable(const uint8_t **pp, char *syl_buf, int buf_cap) {
  * @buf_cap - Capacity of output buffer
  * @return  - Bytes consumed, 0 if done, -1 on error/orphan
  */
-int consume_syllable_grapheme(const uint8_t **pp, char *syl_buf, int buf_cap) {
-  if (!pp || !*pp || !syl_buf || buf_cap <= 0)
+int consume_syllable_grapheme(const uint8_t **pp, const uint8_t *end, char *syl_buf, int buf_cap) {
+  if (!pp || !*pp || !syl_buf || buf_cap <= 0 || (end && *pp >= end))
     return -1;
 
   const uint8_t *p = *pp;
@@ -1084,7 +1100,7 @@ int consume_syllable_grapheme(const uint8_t **pp, char *syl_buf, int buf_cap) {
 
   /* First, scan one grapheme cluster */
   grapheme_t g;
-  int g_len = grapheme_next(p, (int)strlen((const char *)p), &g);
+  int g_len = grapheme_next(p, (int)(end ? (size_t)(end - p) : strlen((const char *)p)), &g);
 
   if (g_len <= 0) {
     syl_buf[0] = '\0';

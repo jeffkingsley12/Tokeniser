@@ -85,15 +85,15 @@ void seq_remove(Sequence *s, int32_t i);
 /*  Pair frequency table (open-addressing hash map)             */
 /* ──────────────────────────────────────────────────────────── */
 
-typedef struct PairEntry {
+typedef struct RepairPairEntry {
     uint32_t left;
     uint32_t right;
     uint32_t freq;
     bool     occupied;
-} PairEntry;
+} RepairPairEntry;
 
 typedef struct {
-    PairEntry *buckets;
+    RepairPairEntry *buckets;
     uint32_t   capacity; /* must be power of 2 */
     uint32_t   count;
 } PairTable;
@@ -201,16 +201,16 @@ void grammar_flatten(Grammar *g, uint8_t max_depth);
 
 #define TRIE_NULL UINT32_MAX
 
-typedef struct TrieNode {
+typedef struct RepairTrieNode {
     uint32_t  child;    /* first child index (TRIE_NULL = leaf) */
     uint32_t  sibling;  /* next sibling index                   */
     uint32_t  label;    /* symbol on edge from parent           */
     uint32_t  token_id; /* assigned token if terminal           */
     bool      terminal;
-} TrieNode;
+} RepairTrieNode;
 
 typedef struct {
-    TrieNode *nodes;
+    RepairTrieNode *nodes;
     uint32_t  count;
     uint32_t  cap;
 } Trie;
