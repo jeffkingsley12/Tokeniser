@@ -444,6 +444,7 @@ void pruner_expand_all(GrammarPruner *gp, const SyllableTable *stbl)
             expand_sym(gp, sym, stbl, tmp, sizeof tmp, 0, in_expand);
         }
     }
+    gp->is_frozen = true;
 }
 
 /* =========================================================

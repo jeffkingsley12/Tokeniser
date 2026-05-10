@@ -129,6 +129,9 @@ $(TEST_DIR)/test_edge_cases_simple: $(TEST_DIR)/test_edge_cases_simple.c $(CORE_
 $(TEST_DIR)/test_truth_layer: $(TEST_DIR)/test_truth_layer.c $(CORE_SOURCES)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
+$(TEST_DIR)/test_lexical_domain: $(TEST_DIR)/test_lexical_domain.c $(CORE_SOURCES)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
+
 # Build all test binaries
 test_bins: $(TEST_BINARIES)
 

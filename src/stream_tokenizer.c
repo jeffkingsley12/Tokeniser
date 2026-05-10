@@ -1,4 +1,5 @@
 #include "tokenizer.h"
+#include <assert.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -41,6 +42,7 @@ static ssize_t stream_refill(StreamTokenizer *st, int fd) {
     }
     
     /* Safely null-terminate since st->buf has a 16-byte overflow sentinel */
+    assert(st->tail <= STREAM_BUF_SIZE);
     st->buf[st->tail] = '\0';
     
     return (ssize_t)(st->tail - st->head);
@@ -191,6 +193,7 @@ TokenizerStatus stream_tokenizer_mem(StreamTokenizer *st,
     if (to_copy > 0) {
         memcpy(st->buf + st->tail, data, to_copy);
         st->tail += to_copy;
+        assert(st->tail <= STREAM_BUF_SIZE);
         st->buf[st->tail] = '\0';
         *bytes_consumed = to_copy;
     }

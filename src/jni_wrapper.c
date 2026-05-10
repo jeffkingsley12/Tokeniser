@@ -110,10 +110,17 @@ Java_com_luganda_tokenizer_NativeTokenizer_nativeEncode(JNIEnv *env, jobject thi
                                                         jlong handle, jstring text) {
     if (!handle || !text) return NULL;
 
+    /* Isolate local references created during this call. */
+    if ((*env)->PushLocalFrame(env, 16) != JNI_OK)
+        return NULL;
+
     MmapTokenizer *mt = (MmapTokenizer *)(uintptr_t)handle;
 
     const char *c_text = (*env)->GetStringUTFChars(env, text, NULL);
-    if (!c_text) return NULL;
+    if (!c_text) {
+        (*env)->PopLocalFrame(env, NULL);
+        return NULL;
+    }
 
     size_t text_len = strlen(c_text);
 
@@ -121,7 +128,8 @@ Java_com_luganda_tokenizer_NativeTokenizer_nativeEncode(JNIEnv *env, jobject thi
      * a zero-byte buffer (malloc(0) behaviour is implementation-defined). */
     if (text_len == 0) {
         (*env)->ReleaseStringUTFChars(env, text, c_text);
-        return (*env)->NewIntArray(env, 0);
+        jintArray empty = (*env)->NewIntArray(env, 0);
+        return (jintArray)(*env)->PopLocalFrame(env, (jobject)empty);
     }
 
     /* Worst-case: every byte is its own token. */
@@ -129,6 +137,7 @@ Java_com_luganda_tokenizer_NativeTokenizer_nativeEncode(JNIEnv *env, jobject thi
     if (!out_buf) {
         (*env)->ReleaseStringUTFChars(env, text, c_text);
         throw_exception(env, "Out of memory");
+        (*env)->PopLocalFrame(env, NULL);
         return NULL;
     }
 
@@ -138,6 +147,7 @@ Java_com_luganda_tokenizer_NativeTokenizer_nativeEncode(JNIEnv *env, jobject thi
 
     if (n_tokens < 0) {
         free(out_buf);
+        (*env)->PopLocalFrame(env, NULL);
         return NULL;
     }
 
@@ -150,7 +160,7 @@ Java_com_luganda_tokenizer_NativeTokenizer_nativeEncode(JNIEnv *env, jobject thi
     }
 
     free(out_buf);
-    return result;
+    return (jintArray)(*env)->PopLocalFrame(env, (jobject)result);
 }
 
 JNIEXPORT void JNICALL

@@ -138,137 +138,6 @@ static inline uint16_t neon_movemask_u8(uint8x16_t v) {
 #include "utf8_luganda.h"
 #endif
 
-/* ============================================================================
- * SIMD BATCH SYLLABIFICATION (SSE4.1)
- * ============================================================================
- */
-
-#ifdef __SSE4_1__
-static inline uint16_t simd_find_vowels_16(const uint8_t *p) {
-  __m128i v = _mm_loadu_si128((const __m128i *)p);
-  __m128i va = _mm_cmpeq_epi8(v, _mm_set1_epi8('a'));
-  __m128i ve = _mm_cmpeq_epi8(v, _mm_set1_epi8('e'));
-  __m128i vi = _mm_cmpeq_epi8(v, _mm_set1_epi8('i'));
-  __m128i vo = _mm_cmpeq_epi8(v, _mm_set1_epi8('o'));
-  __m128i vu = _mm_cmpeq_epi8(v, _mm_set1_epi8('u'));
-  __m128i vA = _mm_cmpeq_epi8(v, _mm_set1_epi8('A'));
-  __m128i vE = _mm_cmpeq_epi8(v, _mm_set1_epi8('E'));
-  __m128i vI = _mm_cmpeq_epi8(v, _mm_set1_epi8('I'));
-  __m128i vO = _mm_cmpeq_epi8(v, _mm_set1_epi8('O'));
-  __m128i vU = _mm_cmpeq_epi8(v, _mm_set1_epi8('U'));
-  __m128i vowel = _mm_or_si128(
-      _mm_or_si128(_mm_or_si128(va, ve), _mm_or_si128(vi, vo)),
-      _mm_or_si128(_mm_or_si128(vu, vA),
-                   _mm_or_si128(_mm_or_si128(vE, vI), _mm_or_si128(vO, vU))));
-  return (uint16_t)_mm_movemask_epi8(vowel);
-}
-
-static inline uint16_t simd_find_nonascii_16(const uint8_t *p) {
-  __m128i v = _mm_loadu_si128((const __m128i *)p);
-  __m128i high = _mm_and_si128(v, _mm_set1_epi8(0x80));
-  return (uint16_t)_mm_movemask_epi8(high);
-}
-#endif /* __SSE4_1__ */
-
-#ifdef __AVX2__
-#include <immintrin.h>
-static inline uint32_t avx2_find_vowel_mask_32(const uint8_t *p) {
-  __m256i v = _mm256_loadu_si256((const __m256i *)p);
-  __m256i va = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('a'));
-  __m256i ve = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('e'));
-  __m256i vi = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('i'));
-  __m256i vo = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('o'));
-  __m256i vu = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('u'));
-  __m256i vA = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('A'));
-  __m256i vE = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('E'));
-  __m256i vI = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('I'));
-  __m256i vO = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('O'));
-  __m256i vU = _mm256_cmpeq_epi8(v, _mm256_set1_epi8('U'));
-  __m256i vowel = _mm256_or_si256(
-      _mm256_or_si256(_mm256_or_si256(va, ve), _mm256_or_si256(vi, vo)),
-      _mm256_or_si256(
-          _mm256_or_si256(vu, vA),
-          _mm256_or_si256(_mm256_or_si256(vE, vI), _mm256_or_si256(vO, vU))));
-  return (uint32_t)_mm256_movemask_epi8(vowel);
-}
-
-static inline uint32_t avx2_find_nonascii_mask_32(const uint8_t *p) {
-  __m256i v = _mm256_loadu_si256((const __m256i *)p);
-  __m256i high = _mm256_and_si256(v, _mm256_set1_epi8(0x80));
-  return (uint32_t)_mm256_movemask_epi8(high);
-}
-#endif /* __AVX2__ */
-
-#ifdef __AVX512F__
-#include <immintrin.h>
-static inline uint64_t avx512_find_vowel_mask_64(const uint8_t *p) {
-  __m512i v = _mm512_loadu_si512((const __m512i *)p);
-  __mmask64 ma = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('a'));
-  __mmask64 me = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('e'));
-  __mmask64 mi = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('i'));
-  __mmask64 mo = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('o'));
-  __mmask64 mu = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('u'));
-  __mmask64 mA = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('A'));
-  __mmask64 mE = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('E'));
-  __mmask64 mI = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('I'));
-  __mmask64 mO = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('O'));
-  __mmask64 mU = _mm512_cmpeq_epi8_mask(v, _mm512_set1_epi8('U'));
-  return ma | me | mi | mo | mu | mA | mE | mI | mO | mU;
-}
-
-static inline uint64_t avx512_find_nonascii_mask_64(const uint8_t *p) {
-  __m512i v = _mm512_loadu_si512((const __m512i *)p);
-  return _mm512_movepi8_mask(v);
-}
-#endif /* __AVX512F__ */
-
-/* ============================================================================
- * SIMD BATCH SYLLABIFICATION — Process 16/32/64 bytes with one function call
- * ============================================================================
- */
-#ifdef __SSE4_1__
-static inline int simd_syllabify_ascii_batch(const uint8_t *text, size_t len,
-                                             uint16_t *syl_ids, size_t cap) {
-  const uint8_t *p = text;
-  const uint8_t *end = text + len;
-  uint16_t vowel_mask;
-  size_t out_idx = 0;
-
-  /* Fast path: SSE4.1 vectorized vowel detection */
-  while (p + 16 <= end && out_idx < cap - 1) {
-    vowel_mask = simd_find_vowels_16(p);
-
-    /* Extract vowel positions and emit syllables */
-    for (int i = 0; i < 16 && out_idx < cap; i++) {
-      if ((vowel_mask >> i) & 1) {
-        /* Vowel found at position i — emit preceding syllable */
-        uint16_t syl_id = 0;
-        for (int j = i - 1; j >= 0; j--) {
-          uint8_t c = p[j];
-          if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')) {
-            syl_id = (syl_id << 8) | c;
-          } else {
-            break;
-          }
-        }
-        syl_ids[out_idx++] = syl_id;
-      }
-    }
-    p += 16;
-  }
-
-  /* Fallback to single-byte processing for tail */
-  while (p < end && out_idx < cap) {
-    if ((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z')) {
-      syl_ids[out_idx++] = *p;
-    }
-    p++;
-  }
-
-  return (int)out_idx;
-}
-#endif /* __SSE4_1__ */
-
 /* =========================================================
  *  OPTIONAL: Grapheme cluster support (UAX #29 + emoji)
  *
@@ -908,61 +777,10 @@ static int consume_syllable_ascii(const uint8_t **pp, char *syl_buf,
 
   char *out = syl_buf;
 
-#if 0  /* SIMD disabled pending input padding contract */
-  /* Pre-classify 16 bytes. Prefer a safe padded load when the string
-   * terminates within the first 16 bytes so we do not read past the
-   * null terminator or into an unmapped page. */
-  __m128i v;
-  size_t safe_prefix = strnlen((const char *)p, 16);
-  if (safe_prefix < 16) {
-    uint8_t tmp[16] = {0};
-    memcpy(tmp, p, safe_prefix);
-    v = _mm_loadu_si128((const __m128i *)tmp);
-  } else {
-    v = _mm_loadu_si128((const __m128i *)p);
-  }
-  __m128i cats = classify_16_sse(v);
-  uint32_t vowel_mask = (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_and_si128(cats, _mm_set1_epi8(CAT_VOWEL)), _mm_set1_epi8(CAT_VOWEL)));
-  uint32_t nasal_mask = (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_and_si128(cats, _mm_set1_epi8(CAT_NASAL)), _mm_set1_epi8(CAT_NASAL)));
-  uint32_t semiv_mask = (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_and_si128(cats, _mm_set1_epi8(CAT_SEMIV)), _mm_set1_epi8(CAT_SEMIV)));
-  uint32_t alpha_mask = (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(_mm_and_si128(cats, _mm_set1_epi8(CAT_ALPHA)), _mm_set1_epi8(CAT_ALPHA)));
-
-#define IS_V(idx) ((vowel_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#define IS_N(idx) ((nasal_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#define IS_S(idx) ((semiv_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#define IS_C(idx)                                                              \
-  ((alpha_mask >> (uint32_t)(p + (idx) - start)) &                             \
-   ~(vowel_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#elif 0  /* NEON disabled pending input padding guarantee */
-  uint8x16_t v = vld1q_u8(p);
-  uint8x16_t cats = classify_16_neon(v);
-
-  uint8x16_t vowel_vec = vceqq_u8(vandq_u8(cats, vdupq_n_u8(NEON_CAT_VOWEL)),
-                                  vdupq_n_u8(NEON_CAT_VOWEL));
-  uint8x16_t nasal_vec = vceqq_u8(vandq_u8(cats, vdupq_n_u8(NEON_CAT_NASAL)),
-                                  vdupq_n_u8(NEON_CAT_NASAL));
-  uint8x16_t semiv_vec = vceqq_u8(vandq_u8(cats, vdupq_n_u8(NEON_CAT_SEMIV)),
-                                  vdupq_n_u8(NEON_CAT_SEMIV));
-  uint8x16_t alpha_vec = vceqq_u8(vandq_u8(cats, vdupq_n_u8(NEON_CAT_ALPHA)),
-                                  vdupq_n_u8(NEON_CAT_ALPHA));
-
-  uint32_t vowel_mask = (uint32_t)neon_movemask_u8(vowel_vec);
-  uint32_t nasal_mask = (uint32_t)neon_movemask_u8(nasal_vec);
-  uint32_t semiv_mask = (uint32_t)neon_movemask_u8(semiv_vec);
-  uint32_t alpha_mask = (uint32_t)neon_movemask_u8(alpha_vec);
-
-#define IS_V(idx) ((vowel_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#define IS_N(idx) ((nasal_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#define IS_S(idx) ((semiv_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#define IS_C(idx)                                                              \
-  ((alpha_mask >> (uint32_t)(p + (idx) - start)) &                             \
-   ~(vowel_mask >> (uint32_t)(p + (idx) - start)) & 1u)
-#else
 #define IS_V(idx) is_vowel_at(p + (idx))
 #define IS_N(idx) is_nasal_at(p + (idx))
 #define IS_S(idx) is_semivowel_at(p + (idx))
 #define IS_C(idx) is_consonant_at(p + (idx))
-#endif
 
   /* ================================================================
    *  Onset selection — Grouped by first character for faster dispatch
@@ -974,15 +792,23 @@ static int consume_syllable_ascii(const uint8_t **pp, char *syl_buf,
   case 'n': {
     int c1 = tolower(LK1(p));
     if (c1 == 'n') {
-      if (tolower(LK2(p)) == 'y' && IS_V(3)) {
-        onset_len = 3; // NNYV
+      if (tolower(LK2(p)) == 'y') {
+        if (IS_V(3)) {
+          onset_len = 3; // NNYV
+        } else if (IS_S(3) && IS_V(4) && tolower(LK3(p)) == 'w') {
+          onset_len = 4; // NNYwV
+        }
       } else if (IS_S(2) && IS_V(3) && gsv_valid((uint8_t)LK0(p), (uint8_t)LK2(p))) {
         onset_len = 3; // nnwV
       } else if (IS_V(2)) {
         onset_len = 2; // nnV
       }
-    } else if (c1 == 'y' && IS_V(2)) {
-      onset_len = 2; // NYV
+    } else if (c1 == 'y') {
+      if (IS_V(2)) {
+        onset_len = 2; // NYV
+      } else if (IS_S(2) && IS_V(3) && tolower(LK2(p)) == 'w') {
+        onset_len = 3; // NYwV
+      }
     } else {
       /* Check NCV/NCSV */
       if (IS_C(1)) {
@@ -1074,6 +900,8 @@ static int consume_syllable_ascii(const uint8_t **pp, char *syl_buf,
       return (int)(p - start);
     }
     memcpy(out, p, (size_t)onset_len);
+    for (int i = 0; i < onset_len; i++)
+      out[i] = (char)tolower((unsigned char)out[i]);
     out += onset_len;
     p += onset_len;
     buf_cap -= onset_len;
@@ -1081,9 +909,13 @@ static int consume_syllable_ascii(const uint8_t **pp, char *syl_buf,
 
   /* ---- Vowel nucleus ---- */
   if (!*p || !IS_V(0)) {
-    *out = '\0';
-    *pp = p;
-    return (int)(p - start);
+    /* If we have an onset but no vowel, we still want to emit the first byte
+     * as a syllable so it's not lost.  Crucially, we only return ONE byte
+     * here to allow the caller to re-evaluate from the next position. */
+    syl_buf[0] = (char)tolower((unsigned char)*start);
+    syl_buf[1] = '\0';
+    *pp = start + 1;
+    return 1;
   }
 
   /* Primary vowel */
@@ -1092,14 +924,14 @@ static int consume_syllable_ascii(const uint8_t **pp, char *syl_buf,
     *pp = p;
     return (int)(p - start);
   }
-  *out++ = (char)*p++;
+  *out++ = (char)tolower((unsigned char)*p++);
   buf_cap--;
 
   /* Long vowel: same ASCII vowel repeated */
   if (*p && IS_V(0) && buf_cap >= 2) {
     uint8_t prev_v = *(p - 1);
     if (tolower((unsigned char)*p) == tolower((unsigned char)prev_v)) {
-      *out++ = (char)*p++;
+      *out++ = (char)tolower((unsigned char)*p++);
       buf_cap--;
     }
   }

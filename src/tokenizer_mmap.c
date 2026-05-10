@@ -40,7 +40,9 @@ static int verify_mmap_header(const MmapHeader *hdr, size_t file_size) {
     if (file_size < sizeof(MmapHeader)) return -1;
     if (memcmp(hdr->magic, "LGMMAPv1", 8) != 0) return -1;
     if (hdr->version < 14 || hdr->version > 15) return -1;   /* expect v14 (CSR) or v15 (Truth) */
-    if (hdr->data_size != (uint64_t)file_size) return -1;
+    
+    /* Security Fix: data_size covers the header + payload, but not the 4-byte CRC at the end */
+    if (hdr->data_size + 4 != (uint64_t)file_size) return -1;
 
     /* v15: Reproducibility check (non-fatal: warn but do not abort) */
     if (hdr->version >= 15) {
@@ -56,176 +58,151 @@ static int verify_mmap_header(const MmapHeader *hdr, size_t file_size) {
     return 0;
 }
 
-MmapTokenizer *tokenizer_load_mmap(const char *path) {
-    if (!path) return NULL;
-
-    int fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        perror("tokenizer_load_mmap: open");
-        return NULL;
-    }
-
-    struct stat st;
-    if (fstat(fd, &st) < 0) {
-        perror("tokenizer_load_mmap: fstat");
-        close(fd);
-        return NULL;
-    }
-
-    /* Reject empty files and files too large to mmap on this platform */
-    if (st.st_size <= 0) {
-        fprintf(stderr, "[load_mmap] file is empty: %s\n", path);
-        close(fd);
-        return NULL;
-    }
-    if ((uint64_t)st.st_size > (uint64_t)SIZE_MAX) {
-        fprintf(stderr, "[load_mmap] file too large for 32-bit size_t: %s\n", path);
-        close(fd);
-        return NULL;
-    }
-    size_t size = (size_t)st.st_size;
-
-    if (size < sizeof(MmapHeader)) {
-        fprintf(stderr, "[load_mmap] file too small to contain a header: %s\n", path);
-        close(fd);
-        return NULL;
-    }
-
-    void *base = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (base == MAP_FAILED) {
-        perror("tokenizer_load_mmap: mmap");
-        close(fd);
-        return NULL;
-    }
-
+static MmapTokenizer *tokenizer_load_mmap_internal(void *base, size_t size) {
     const MmapHeader *hdr = (const MmapHeader *)base;
     if (verify_mmap_header(hdr, size) != 0) {
-        fprintf(stderr, "[load_mmap] header verification failed: %s\n", path);
-        munmap(base, size);
-        close(fd);
+        return NULL;
+    }
+
+    /* -------------------------------------------------------------------------
+     * Security Fix: Verify CRC32 Integrity before processing any offsets
+     * ------------------------------------------------------------------------- */
+    uint32_t expected_crc = *(uint32_t *)((char *)base + size - 4);
+    uint32_t actual_crc = crc32_update(0, (const uint8_t *)base, size - 4);
+    
+    if (actual_crc != expected_crc) {
+        fprintf(stderr, "[load_mmap] CRC mismatch: expected %08x, got %08x\n", expected_crc, actual_crc);
         return NULL;
     }
 
     MmapTokenizer *mt = calloc(1, sizeof(MmapTokenizer));
-    if (!mt) {
-        munmap(base, size);
-        close(fd);
-        return NULL;
-    }
+    if (!mt) return NULL;
 
-    mt->mmap_base  = base;
-    mt->mmap_size  = size;
-    mt->fd         = fd;
-    mt->owns_buffer = true;
+    mt->mmap_base = base;
+    mt->mmap_size = size;
+    mt->fd        = -1;
 
     Tokenizer *t = &mt->base;
     t->vocab_size = hdr->vocab_size;
 
-    /* --- Wire up SyllableTable ---
-     * Validate the offset before dereferencing. */
+    /* --- SyllableTable ---
+     * We allocate a HEAP copy of the SyllableTable because we need to store
+     * the transient 'trie' pointer in it, and the mmap is read-only. */
     if (check_range(size, hdr->stbl_offset, sizeof(SyllableTable)) != 0) {
         fprintf(stderr, "[load_mmap] stbl_offset out of range\n");
         goto fail;
     }
-    t->stbl = (SyllableTable *)OFF2PTR(base, hdr->stbl_offset);
+    t->stbl = malloc(sizeof(SyllableTable));
+    if (!t->stbl) goto fail;
+    memcpy(t->stbl, OFF2PTR(base, hdr->stbl_offset), sizeof(SyllableTable));
+    t->stbl->trie = NULL; /* will be rebuilt below */
 
-    /* --- RePairState ---
-     * Only metadata is needed at inference time; rules are not traversed
-     * via t->rs->rules, so we leave rules pointer NULL and store the count. */
+    /* --- Syllabifier --- */
+    t->syl = syllabifier_create(t->stbl);
+    if (!t->syl) goto fail;
+
+    /* --- RePairState --- */
     t->rs = calloc(1, sizeof(RePairState));
     if (!t->rs) goto fail;
     t->rs->rule_count = hdr->rule_count;
-    /* rules pointer intentionally left NULL — inference does not walk rules */
 
-    /* --- LOUDS CSR Trie ---
-     * Validate the LOUDS section offset and then wire the internal
-     * sub-array pointers as offsets from the start of the LOUDS block.
-     *
-     * Layout (immediately after the LOUDS header struct):
-     *   [row_ptr:  csr_node_count  × 4 bytes, ALIGN8]
-     *   [edges:    csr_edge_count  × 2 bytes, ALIGN8]
-     *   [next_node:csr_edge_count  × 4 bytes, ALIGN8]
-     *   [terminals:csr_edge_count  × 4 bytes, ALIGN8]
-     */
-    if (check_range(size, hdr->louds_offset, sizeof(LOUDS)) != 0) {
-        fprintf(stderr, "[load_mmap] louds_offset out of range\n");
-        goto fail;
-    }
-    t->louds = (LOUDS *)OFF2PTR(base, hdr->louds_offset);
-    {
-        LOUDS   *l          = t->louds;
+    /* --- LOUDS CSR Trie --- */
+    if (hdr->louds_offset > 0) {
+        if (check_range(size, hdr->louds_offset, sizeof(LOUDS)) != 0) goto fail;
+        t->louds = (LOUDS *)OFF2PTR(base, hdr->louds_offset);
+        LOUDS *l = t->louds;
         uint8_t *louds_base = (uint8_t *)l;
-        uint64_t l_size     = (uint64_t)sizeof(LOUDS);
+        uint64_t l_size = (uint64_t)sizeof(LOUDS);
 
-        /* Compute sub-section byte offsets in uint64_t to prevent truncation
-         * on 32-bit platforms when node_count or edge_count is large.
-         * All arithmetic stays in uint64_t until check_range has validated
-         * that the values fit within the mapping — only then are they cast
-         * to size_t for pointer arithmetic. */
-        uint64_t off_row_ptr = l_size;
-        uint64_t off_edges   = off_row_ptr + ALIGN8((uint64_t)l->node_count * 4);
-        uint64_t off_next    = off_edges   + ALIGN8((uint64_t)l->edge_count * 2);
-        uint64_t off_term    = off_next    + ALIGN8((uint64_t)l->edge_count * 4);
-        uint64_t louds_total = off_term    + ALIGN8((uint64_t)l->edge_count * 4);
+        uint64_t off_row_ptr = ALIGN8(l_size);
+        uint64_t off_edges   = ALIGN8(off_row_ptr + (uint64_t)(l->node_count + 1) * 4);
+        uint64_t off_next    = ALIGN8(off_edges   + (uint64_t)l->edge_count * 2);
+        uint64_t off_term    = ALIGN8(off_next    + (uint64_t)l->edge_count * 4);
+        uint64_t louds_total = off_term    + (uint64_t)l->edge_count * 4;
 
-        /* Validate the full LOUDS block fits inside the mapping */
-        if (check_range(size, hdr->louds_offset, louds_total) != 0) {
-            fprintf(stderr, "[load_mmap] LOUDS sub-arrays extend past file end\n");
-            goto fail;
-        }
+        if (check_range(size, hdr->louds_offset, louds_total) != 0) goto fail;
 
-        /* Safe to cast: check_range guarantees all offsets < file_size <= SIZE_MAX */
         l->row_ptr   = (uint32_t *)(louds_base + (size_t)off_row_ptr);
         l->labels    = (uint16_t *)(louds_base + (size_t)off_edges);
         l->next_node = (uint32_t *)(louds_base + (size_t)off_next);
         l->terminals = (uint32_t *)(louds_base + (size_t)off_term);
     }
 
-    /* --- String table (expansion strings for grammar rules) --- */
+    /* --- String table expansions --- */
     if (hdr->strings_size > 0 && hdr->rule_count > 0) {
-        /* Validate that rule_count × MAX_TOKEN_CHARS fits in strings_size */
-        uint64_t expected = (uint64_t)hdr->rule_count * MAX_TOKEN_CHARS;
-        if (expected > hdr->strings_size) {
-            fprintf(stderr,
-                "[load_mmap] strings_size (%" PRIu64 ") < rule_count × MAX_TOKEN_CHARS "
-                "(%" PRIu64 ")\n",
-                (uint64_t)hdr->strings_size, expected);
-            goto fail;
-        }
-        if (check_range(size, hdr->strings_offset, hdr->strings_size) != 0) {
-            fprintf(stderr, "[load_mmap] strings section out of range\n");
-            goto fail;
-        }
-
+        if (check_range(size, hdr->strings_offset, hdr->strings_size) != 0) goto fail;
         t->gp_expansions = calloc(hdr->rule_count, sizeof(char *));
         if (!t->gp_expansions) goto fail;
-
         char *str_base = (char *)OFF2PTR(base, hdr->strings_offset);
         for (uint32_t i = 0; i < hdr->rule_count; i++) {
             t->gp_expansions[i] = str_base + ((size_t)i * MAX_TOKEN_CHARS);
         }
     }
 
+    /* --- Rebuild transient tables (H-01) --- */
+    extern void tokenizer_rebuild_id_to_str(Tokenizer *t);
+    extern void tokenizer_rebuild_fast_paths(Tokenizer *t);
+    
+    t->stbl->trie = syltrie_build(t->stbl);
+    tokenizer_rebuild_id_to_str(t);
+    tokenizer_rebuild_fast_paths(t);
+
     return mt;
 
 fail:
-    /* Partial init — clean up what we allocated before returning NULL */
-    if (t->rs)            { free(t->rs);            t->rs = NULL; }
-    if (t->gp_expansions) { free(t->gp_expansions); t->gp_expansions = NULL; }
-    munmap(base, size);
-    close(fd);
+    if (t->stbl) free(t->stbl);
+    if (t->syl) syllabifier_destroy(t->syl);
+    if (t->rs) free(t->rs);
+    if (t->gp_expansions) free(t->gp_expansions);
     free(mt);
     return NULL;
+}
+
+MmapTokenizer *tokenizer_load_mmap(const char *path) {
+    if (!path) return NULL;
+    int fd = open(path, O_RDONLY);
+    if (fd < 0) return NULL;
+
+    struct stat st;
+    if (fstat(fd, &st) < 0) { close(fd); return NULL; }
+    size_t size = (size_t)st.st_size;
+
+    void *base = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (base == MAP_FAILED) { close(fd); return NULL; }
+
+    MmapTokenizer *mt = tokenizer_load_mmap_internal(base, size);
+    if (!mt) { munmap(base, size); close(fd); return NULL; }
+
+    mt->fd          = fd;
+    mt->owns_buffer = true;
+    return mt;
+}
+
+MmapTokenizer *tokenizer_load_mmap_from_buffer(const void *buf, size_t size) {
+    if (!buf || size < sizeof(MmapHeader)) return NULL;
+    MmapTokenizer *mt = tokenizer_load_mmap_internal((void *)buf, size);
+    if (mt) {
+        mt->owns_buffer = false; /* caller owns the buffer */
+    }
+    return mt;
 }
 
 void tokenizer_destroy_mmap(MmapTokenizer *mt) {
     if (!mt) return;
 
-    /* Free heap-allocated wrappers first (they do not own the mmap memory) */
-    if (mt->base.rs)            free(mt->base.rs);
-    if (mt->base.gp_expansions) free(mt->base.gp_expansions);
+    Tokenizer *t = &mt->base;
 
-    /* Unmap before closing fd — fd is no longer needed once mapped */
+    /* Free transient tables */
+    if (t->stbl) {
+        if (t->stbl->trie) syltrie_destroy(t->stbl->trie);
+        free(t->stbl);
+    }
+    if (t->syl) syllabifier_destroy(t->syl);
+    if (t->id_to_str) free(t->id_to_str);
+    if (t->rs) free(t->rs);
+    if (t->gp_expansions) free(t->gp_expansions);
+
+    /* Unmap before closing fd */
     if (mt->owns_buffer && mt->mmap_base) {
         munmap(mt->mmap_base, mt->mmap_size);
         mt->mmap_base = NULL;

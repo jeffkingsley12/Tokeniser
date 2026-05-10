@@ -18,6 +18,7 @@
 #include "tokenizer.h"
 
 #include <assert.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -281,14 +282,49 @@ LOUDS *louds_build(const char **tokens, const uint32_t *token_ids,
   Syllabifier *s = (Syllabifier *)syl_obj;
   uint16_t syls[MAX_SYLLABLES];
 
+  uint32_t skipped_unk = 0;
+
   for (uint32_t t = 0; t < n_tokens; t++) {
     int n = syllabify(s, tokens[t], syls, MAX_SYLLABLES);
     if (n <= 0)
       continue;
+
+    /* Unified-admission guard: a syllable ID of 0 (TOK_UNK) in the sequence
+     * means the scanner emitted a symbol that was never interned into the
+     * SyllableTable.  Inserting such a sequence into the LOUDS trie creates
+     * an edge labelled 0 which is indistinguishable from "no edge found" in
+     * the binary-search lookup, making this token permanently unreachable.
+     *
+     * Root cause: stbl was not a superset of the scanner's output domain at
+     * the time louds_build() was called.  stbl_seed_orphan_ascii() in
+     * tokenizer_build() should prevent this; this check surfaces regressions. */
+    bool has_unk = false;
+    for (int si = 0; si < n; si++) {
+      if (syls[si] == 0) { /* TOK_UNK */
+        has_unk = true;
+        break;
+      }
+    }
+    if (has_unk) {
+      fprintf(stderr,
+              "[louds_build] WARNING: skipping token \"%s\" (id=%u) — "
+              "syllabification contains TOK_UNK; fix: ensure stbl covers all "
+              "characters before louds_build() is called.\n",
+              tokens[t], token_ids[t]);
+      skipped_unk++;
+      continue;
+    }
+
     if (trie_insert(root, syls, (uint32_t)n, token_ids[t]) != 0) {
       trie_free(root);
       return NULL;
     }
+  }
+
+  if (skipped_unk > 0) {
+    fprintf(stderr,
+            "[louds_build] %u token(s) skipped due to TOK_UNK in syllable "
+            "sequence — vocabulary is incomplete.\n", skipped_unk);
   }
 
   /* Step 2: Collect all token entries into a sorted flat array.

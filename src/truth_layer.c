@@ -338,8 +338,10 @@ int truth_trie_build_from_seed(TruthTrie *tt, const Tokenizer *tok) {
     }
   }
 
-  tt->has_csr = true;
-  return truth_trie_compute_failure_links(tt);
+  int rc = truth_trie_compute_failure_links(tt);
+  if (rc == 0)
+    tt->has_csr = true;
+  return rc;
 }
 
 int truth_trie_compute_failure_links(TruthTrie *tt) {
@@ -353,6 +355,7 @@ int truth_trie_compute_failure_links(TruthTrie *tt) {
   if (!queue) {
     free(tt->failure_links);
     tt->failure_links = NULL;
+    tt->has_csr = false;
     return -1;
   }
 

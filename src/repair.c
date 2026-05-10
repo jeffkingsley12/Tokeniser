@@ -6,7 +6,10 @@
  *
  * THREADING CONTRACT:
  * - Training (repair_train) is NOT thread-safe (uses global slab and mutable state).
- * - Inference/Compression is thread-safe when using repair_compress_with_context.
+ * - Inference/Compression is thread-safe when each thread has its own
+ *   RePairCompressor instance passed to repair_compress_with_context().
+ *   Sharing a single RePairCompressor across threads races on the internal
+ *   hash table (build_compress_map writes comp->ht).
  */
 
 #include "tokenizer.h"

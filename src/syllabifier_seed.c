@@ -130,12 +130,12 @@ static const char *PHONO_SEEDS[] = {
     "nzwa", "nzwe", "nzwi", "nzwo", "nzwu",
 
 
-    /* Syllabic Nasals */
-    "m", "n",
+    /* Syllabic Nasals & Semivowel Orphans */
+    "m", "n", "y", "w", "ŋ",
 
     /* Control & Punctuation */
     " ", "\t", "\n", "\r",
-    ".", ",", "!", "?", ";", ":", "-", "(", ")", "\"", "'"
+    ".", ",", "!", "?", ";", ":", "-", "(", ")", "[", "]", "{", "}", "\"", "'", "/", "_", "\\"
 };
 
 #define PHONO_SEED_COUNT (sizeof(PHONO_SEEDS) / sizeof(PHONO_SEEDS[0]))
@@ -222,6 +222,50 @@ int stbl_seed_bytes(SyllableTable *stbl)
      */
     (void)stbl;
     return 0;
+}
+
+/*
+ * stbl_seed_orphan_ascii
+ *
+ * Seeds every printable ASCII character (0x20-0x7E) that is NOT already
+ * in the SyllableTable.  This guarantees that consume_syllable_ascii()'s
+ * single-byte orphan fallback path always produces a valid stbl ID,
+ * never TOK_UNK=0.
+ *
+ * This is the "unified admission" function: EXACTLY the same set of
+ * characters that the scanner can emit MUST be present in the stbl
+ * before the table is frozen and before louds_build() is called.
+ *
+ * Call AFTER stbl_seed_special() and stbl_seed_phonotactic() but
+ * BEFORE stbl_freeze() / any corpus processing that relies on the IDs.
+ *
+ * Returns the number of NEW entries inserted (existing entries are
+ * counted as 0 because stbl_intern deduplicates automatically).
+ */
+int stbl_seed_orphan_ascii(SyllableTable *stbl)
+{
+    if (!stbl) return -1;
+
+    int inserted = 0;
+    for (int c = 0x20; c <= 0x7E; c++) {
+        char s[2] = { (char)c, '\0' };
+        uint16_t existing = stbl_lookup(stbl, s);
+        if (existing == UINT16_MAX) {
+            uint16_t id = stbl_intern(stbl, s);
+            if (id == UINT16_MAX) {
+                fprintf(stderr,
+                    "[seed] ERROR: stbl full while seeding ASCII 0x%02X ('%c')\n",
+                    c, (char)c);
+                return -1;
+            }
+            inserted++;
+        }
+    }
+
+    fprintf(stderr, "[seed] ASCII orphan sweep: %d new entries seeded "
+                    "(stbl now has %u entries)\n",
+            inserted, (unsigned)stbl->count);
+    return inserted;
 }
 
 uint32_t stbl_seed_phonotactic(SyllableTable *stbl)
