@@ -1,0 +1,66 @@
+Tokeniser Test Suite
+Timestamp: 20260510_085737
+Project: /home/jeff/Projects/c/Tokeniser
+
+[1;33m▶ Simple Tokenizer (requires model file)[0m
+[0;32m✓ PASS: simple_tokenizer (19 lines of output)[0m
+    tokenizer_load: fopen: No such file or directory
+    [seed] ASCII orphan sweep: 0 new entries seeded (stbl now has 761 entries)
+    [louds_build] WARNING: skipping token "[UNK]" (id=0) — syllabification contains TOK_UNK; fix: ensure stbl covers all characters before louds_build() is called.
+    [louds_build] 1 token(s) skipped due to TOK_UNK in syllable sequence — vocabulary is incomplete.
+    [louds_build] Split CSR: 4325 nodes, 4324 edges
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 217 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 96 entries, sp_dense: 0 entries
+    Testing simple tokenizer functionality...
+    Model file not found, building from mini corpus...
+    Built tokenizer from 9 documents
+    Tokenizer loaded successfully
+    Test text: "okusoma nnyo"
+    Token count: 4
+    Tokens: [oku] [soma] [ ] [nnyo] 
+    
+    Testing performance...
+    Completed 10000 iterations in 0.002 seconds
+    Throughput: 4524887 ops/sec
+    Tokenizer destroyed successfully
+    ...
+[1;33m▶ Benchmark Simple (performance baseline)[0m
+[0;32m✓ PASS: benchmark_simple (13 lines of output)[0m
+    tokenizer_load: fopen: No such file or directory
+    [seed] ASCII orphan sweep: 0 new entries seeded (stbl now has 761 entries)
+    [louds_build] WARNING: skipping token "[UNK]" (id=0) — syllabification contains TOK_UNK; fix: ensure stbl covers all characters before louds_build() is called.
+    [louds_build] 1 token(s) skipped due to TOK_UNK in syllable sequence — vocabulary is incomplete.
+    [louds_build] Split CSR: 4325 nodes, 4324 edges
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 217 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 96 entries, sp_dense: 0 entries
+    Testing tokenizer load and destroy...
+    Model file not found, building from mini corpus...
+    Built tokenizer from 5 documents
+    Tokenizer loaded successfully
+    Destroying tokenizer...
+    Tokenizer destroyed successfully
+    ...
+[1;33m▶ Edge Cases Test[0m
+[0;32m✓ PASS: edge_cases (1212 lines of output)[0m
+    [louds_build] Fast path: 468 syllables, 14 can extend
+    [tokenizer_rebuild_fast_paths] byte_to_syl: 322 entries, cv_to_token: 60 entries, space_cv_to_token: 0 entries
+    [tokenizer_build_dense] cv_dense: 60 entries, sp_dense: 0 entries
+    🧪 Luganda Tokenizer Edge Case Test Suite
+    ==========================================
+    
+    Building new tokenizer (this may take a while)...
+    Tokenizer ready. Vocab size: 719
+    
+    
+    🧪 Testing English Loanwords
+    ✅ PASS: English loanword tokenizes successfully
+    ✅ PASS: Reasonable token count for loanword
+    ✅ PASS: All tokens decode successfully
+    ✅ PASS: All tokens decode successfully
+    ✅ PASS: All tokens decode successfully
+    ✅ PASS: All tokens decode successfully
+    ✅ PASS: English loanword tokenizes successfully
+    ✅ PASS: Reasonable token count for loanword
+    ✅ PASS: All tokens decode successfully
+    ...
+[1;33m▶ Serialization & Security[0m

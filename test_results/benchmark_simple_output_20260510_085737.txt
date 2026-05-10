@@ -1,0 +1,13 @@
+tokenizer_load: fopen: No such file or directory
+[seed] ASCII orphan sweep: 0 new entries seeded (stbl now has 761 entries)
+[louds_build] WARNING: skipping token "[UNK]" (id=0) — syllabification contains TOK_UNK; fix: ensure stbl covers all characters before louds_build() is called.
+[louds_build] 1 token(s) skipped due to TOK_UNK in syllable sequence — vocabulary is incomplete.
+[louds_build] Split CSR: 4325 nodes, 4324 edges
+[tokenizer_rebuild_fast_paths] byte_to_syl: 240 entries, cv_to_token: 217 entries, space_cv_to_token: 0 entries
+[tokenizer_build_dense] cv_dense: 96 entries, sp_dense: 0 entries
+Testing tokenizer load and destroy...
+Model file not found, building from mini corpus...
+Built tokenizer from 5 documents
+Tokenizer loaded successfully
+Destroying tokenizer...
+Tokenizer destroyed successfully

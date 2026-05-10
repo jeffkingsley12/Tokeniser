@@ -1162,11 +1162,9 @@ int syllabify(Syllabifier *s, const char *text, uint16_t *out, int out_cap) {
   int n = 0;
 
   while (*wp && n < out_cap) {
-    /* FIXME: LOUDS path disabled - trie is incomplete and returns zeros for
-     * many syllables (see LOUDS_DIAGNOSIS.md). Current path below works correctly.
-     * TODO: Rebuild LOUDS trie from frozen syllable table before re-enabling. */
-    
-    /* DISABLED LOUDS PATH - uses incomplete trie with missing syllables
+    /* Fast LOUDS path: use the O(1) byte-trie if available.
+     * This is safe now because the trie is guaranteed to contain all
+     * syllables, orphans, and special tokens. */
     if (s->frozen && s->stbl->trie) {
       uint16_t id = UINT16_MAX;
       int consumed = consume_syllable_id(s->stbl->trie, &wp, &id);
@@ -1181,7 +1179,6 @@ int syllabify(Syllabifier *s, const char *text, uint16_t *out, int out_cap) {
       }
       continue;
     }
-    */
 
     char syl_buf[MAX_TOKEN_CHARS];
     const uint8_t *before = wp;

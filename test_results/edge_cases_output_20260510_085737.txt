@@ -1,0 +1,1212 @@
+[louds_build] Fast path: 468 syllables, 14 can extend
+[tokenizer_rebuild_fast_paths] byte_to_syl: 322 entries, cv_to_token: 60 entries, space_cv_to_token: 0 entries
+[tokenizer_build_dense] cv_dense: 60 entries, sp_dense: 0 entries
+🧪 Luganda Tokenizer Edge Case Test Suite
+==========================================
+
+Building new tokenizer (this may take a while)...
+Tokenizer ready. Vocab size: 719
+
+
+🧪 Testing English Loanwords
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+✅ PASS: English loanword tokenizes successfully
+✅ PASS: Reasonable token count for loanword
+✅ PASS: All tokens decode successfully
+✅ PASS: All tokens decode successfully
+
+🧪 Testing Swahili Loanwords
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+✅ PASS: Swahili loanword tokenizes successfully
+✅ PASS: Reasonable tokenization ratio
+
+🧪 Testing Arabic Loanwords
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Arabic loanword tokenizes successfully
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+✅ PASS: Religious terms decode correctly
+
+🧪 Testing Code-Switching Patterns
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+✅ PASS: Code-switching text tokenizes successfully
+✅ PASS: Reasonable token count for mixed language
+✅ PASS: Mixed language tokens detected
+
+🧪 Testing Emoji and Unicode Symbols
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+Text: "Oli otya? 😊"
+Tokens (11): [O] [li] [ ] [o] [tya] [?] [ ] [�] [�] [�] [�] 
+
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+Text: "Webale nnyo! 🙏"
+Tokens (12): [W] [en] [ba] [le] [ ] [nnyo] [!] [ ] [�] [�] [�] [�] 
+
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+Text: "Nkwagala ❤️"
+Tokens (11): [N] [kwa] [ga] [lab] [ ] [�] [�] [�] [�] [�] [�] 
+
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji text tokenizes successfully
+✅ PASS: Emoji detection works
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+✅ PASS: Emoji tokens decode successfully
+✅ PASS: Token length within bounds
+
+🧪 Testing Social Media Patterns
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+✅ PASS: Social media text tokenizes successfully
+✅ PASS: Special characters properly tokenized
+
+🧪 Testing Technical and Scientific Terms
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Complex terms reasonably tokenized
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokenizes successfully
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+✅ PASS: Technical term tokens decode correctly
+
+🧪 Testing Edge Case Boundaries
+✅ PASS: Empty string returns 0 tokens
+✅ PASS: Single character returns 1 token
+✅ PASS: Very long string handled
+✅ PASS: Token count within MAX_SYLLABLES limit
+✅ PASS: Special characters handled
+✅ PASS: Mixed Unicode handled
+
+🧪 Testing Performance Edge Cases
+Repeated pattern tokenization: 0.0013 seconds for 1000 iterations
+✅ PASS: Fast path performs well on repeated patterns
+Unique pattern tokenization: 0.0009 seconds for 1000 iterations
+✅ PASS: Full tokenizer performs reasonably
+
+📊 Test Results Summary
+======================
+Total tests: 1164
+Passed: 1164 ✅
+Failed: 0 ❌
+Success rate: 100.0%
+
+🏁 Edge case testing completed!
+⚠️  Note: tokenizer_destroy skipped due to known cleanup issue
