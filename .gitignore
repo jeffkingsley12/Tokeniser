@@ -46,6 +46,7 @@ update.patch
 run_tests_temp.sh
 *.tmp
 *.bak
+*.txt
 
 # Models
 *.bin
