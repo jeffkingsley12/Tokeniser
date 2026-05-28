@@ -23,6 +23,13 @@
 #define USE_FUSED 0
 #endif
 
+/* Lattice-based beam search encoding — experimental constraint-aware tokenization.
+ * Uses arena-backed min-heap for O(N*K*log*K) bounded search instead of greedy.
+ * Set to 1 to enable tokenizer_encode_lattice as the default encoding path. */
+#ifndef USE_LATTICE_ENCODING
+#define USE_LATTICE_ENCODING 0
+#endif
+
 /* Atomic stats collection.  Each hit costs ~20-30 cycles on x86.
  * Leave off in production unless you need per-call telemetry. */
 #ifndef ENABLE_STATS

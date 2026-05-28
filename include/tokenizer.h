@@ -431,6 +431,8 @@ int tokenizer_encode(const Tokenizer *t, const char *text,
                      uint32_t *out, uint32_t out_cap);
 int tokenizer_encode_beam(const Tokenizer *t, const char *text,
                           uint32_t *out, uint32_t out_cap);
+int tokenizer_encode_lattice(const Tokenizer *t, const char *text,
+                             uint32_t *out, uint32_t out_cap);
 
 #if USE_FUSED
 int tokenizer_encode_fused(const Tokenizer *t, const char *text,

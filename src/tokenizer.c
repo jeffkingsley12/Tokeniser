@@ -1366,6 +1366,13 @@ int tokenizer_encode(const Tokenizer *t, const char *text, uint32_t *out,
                      uint32_t out_cap) {
   if (!t || !text || !out) return -1;
 
+#if USE_LATTICE_ENCODING
+  /* Use lattice-based beam search when enabled */
+  if (t->token_features && t->louds && t->louds->has_csr) {
+    return tokenizer_encode_lattice(t, text, out, out_cap);
+  }
+#endif
+
   /* Fast path: if no constraint tables built, fall back to greedy LOUDS */
   if (!t->token_features) {
     uint16_t syls[MAX_SYLLABLES];
@@ -1375,6 +1382,224 @@ int tokenizer_encode(const Tokenizer *t, const char *text, uint32_t *out,
   }
 
   return tokenizer_encode_beam(t, text, out, out_cap);
+}
+
+/* =========================================================
+ * tokenizer_encode_lattice
+ * Arena-backed beam search engine for constraint-aware tokenization
+ * ========================================================= */
+
+#define LATTICE_BEAM_WIDTH 64
+#define LATTICE_MAX_POS 512
+
+typedef struct {
+  uint64_t active_features;
+  uint64_t forbidden_features;
+  float accumulated_score;
+} LatticeConstraintState;
+
+typedef struct {
+  LatticeConstraintState state;
+  uint32_t token_id;
+  uint32_t parent_arena_idx;
+} LatticeNode;
+
+typedef struct {
+  uint32_t arena_indices[LATTICE_BEAM_WIDTH];
+  uint32_t count;
+} LatticeBeamQueue;
+
+typedef struct {
+  LatticeBeamQueue columns[LATTICE_MAX_POS + 1];
+  LatticeNode *arena_buffer;
+  uint32_t arena_count;
+  uint32_t arena_capacity;
+} PositionalLattice;
+
+static inline bool lattice_edge_valid(const LatticeConstraintState *state,
+                                       uint64_t edge_requires,
+                                       uint64_t edge_forbids,
+                                       uint64_t edge_features) {
+  if (__builtin_expect((edge_requires & ~state->active_features) != 0, 0)) return false;
+  if (__builtin_expect((edge_forbids & state->active_features) != 0, 0)) return false;
+  if (__builtin_expect((state->forbidden_features & edge_features) != 0, 0)) return false;
+  return true;
+}
+
+static inline void lattice_heapify_up(LatticeBeamQueue *bq, const LatticeNode *arena, uint32_t idx) {
+  uint32_t child = idx;
+  while (child > 0) {
+    uint32_t parent = (child - 1) >> 1;
+    if (arena[bq->arena_indices[parent]].state.accumulated_score <=
+        arena[bq->arena_indices[child]].state.accumulated_score) break;
+    uint32_t tmp = bq->arena_indices[parent];
+    bq->arena_indices[parent] = bq->arena_indices[child];
+    bq->arena_indices[child] = tmp;
+    child = parent;
+  }
+}
+
+static inline void lattice_heapify_down(LatticeBeamQueue *bq, const LatticeNode *arena, uint32_t idx) {
+  uint32_t parent = idx;
+  while (true) {
+    uint32_t left = (parent << 1) + 1;
+    uint32_t right = left + 1;
+    uint32_t smallest = parent;
+
+    if (left < bq->count &&
+        arena[bq->arena_indices[left]].state.accumulated_score <
+        arena[bq->arena_indices[smallest]].state.accumulated_score) smallest = left;
+    if (right < bq->count &&
+        arena[bq->arena_indices[right]].state.accumulated_score <
+        arena[bq->arena_indices[smallest]].state.accumulated_score) smallest = right;
+    if (smallest == parent) break;
+
+    uint32_t tmp = bq->arena_indices[parent];
+    bq->arena_indices[parent] = bq->arena_indices[smallest];
+    bq->arena_indices[smallest] = tmp;
+    parent = smallest;
+  }
+}
+
+static inline void lattice_beam_insert(PositionalLattice *lattice, uint32_t col_idx,
+                                        const LatticeConstraintState *state,
+                                        uint32_t token_id, uint32_t parent_idx) {
+  LatticeBeamQueue *bq = &lattice->columns[col_idx];
+  LatticeNode *arena = lattice->arena_buffer;
+
+  if (bq->count == LATTICE_BEAM_WIDTH) {
+    uint32_t min_idx = bq->arena_indices[0];
+    if (state->accumulated_score <= arena[min_idx].state.accumulated_score) return;
+
+    uint32_t target_idx = lattice->arena_count++;
+    if (__builtin_expect(target_idx >= lattice->arena_capacity, 0)) return;
+
+    lattice->arena_buffer[target_idx] = (LatticeNode){*state, token_id, parent_idx};
+    bq->arena_indices[0] = target_idx;
+    lattice_heapify_down(bq, lattice->arena_buffer, 0);
+  } else {
+    uint32_t target_idx = lattice->arena_count++;
+    if (__builtin_expect(target_idx >= lattice->arena_capacity, 0)) return;
+
+    lattice->arena_buffer[target_idx] = (LatticeNode){*state, token_id, parent_idx};
+    bq->arena_indices[bq->count] = target_idx;
+    lattice_heapify_up(bq, lattice->arena_buffer, bq->count);
+    bq->count++;
+  }
+}
+
+int tokenizer_encode_lattice(const Tokenizer *t, const char *text,
+                            uint32_t *out_tokens, uint32_t out_capacity) {
+  if (!t || !text || !out_tokens) return -1;
+  if (!t->louds || !t->louds->has_csr) return -1;
+  if (!t->token_features || !t->token_requires || !t->token_forbids) {
+    /* Fall back to greedy if constraints not available */
+    return tokenizer_encode(t, text, out_tokens, out_capacity);
+  }
+
+  uint16_t syls[MAX_SYLLABLES];
+  int n_syls = syllabify_optimized(t, text, syls, MAX_SYLLABLES);
+  if (n_syls <= 0) return 0;
+  if ((uint32_t)n_syls > LATTICE_MAX_POS) {
+    /* Input too long for lattice - fall back to greedy */
+    return tokenizer_encode(t, text, out_tokens, out_capacity);
+  }
+
+  LatticeNode static_arena[4096];
+  PositionalLattice lattice = {
+    .arena_buffer = static_arena,
+    .arena_count = 0,
+    .arena_capacity = 4096
+  };
+  memset(lattice.columns, 0, sizeof(lattice.columns));
+
+  LatticeConstraintState root_state = {0};
+  lattice_beam_insert(&lattice, 0, &root_state, 0xFFFFFFFF, 0xFFFFFFFF);
+
+  for (uint32_t pos = 0; pos < (uint32_t)n_syls; pos++) {
+    LatticeBeamQueue *current_beam = &lattice.columns[pos];
+    if (current_beam->count == 0) continue;
+
+    for (uint32_t b = 0; b < current_beam->count; b++) {
+      uint32_t parent_idx = current_beam->arena_indices[b];
+      LatticeConstraintState parent_state = lattice.arena_buffer[parent_idx].state;
+
+      uint32_t node = 0;
+      for (uint32_t i = pos; i < (uint32_t)n_syls; i++) {
+        uint32_t start = t->louds->row_ptr[node];
+        uint32_t end = t->louds->row_ptr[node + 1];
+        uint16_t target = syls[i];
+        uint32_t next = 0xFFFFFFFF;
+
+        uint32_t lo = start, hi = end;
+        while (lo < hi) {
+          uint32_t mid = (lo + hi) >> 1;
+          if (t->louds->labels[mid] < target) lo = mid + 1;
+          else hi = mid;
+        }
+        if (lo < end && t->louds->labels[lo] == target) {
+          next = t->louds->next_node[lo];
+        }
+
+        if (next == 0xFFFFFFFF) break;
+        node = next;
+
+        if (t->louds->terminals[node] != 0) {
+          uint32_t token_id = t->louds->terminals[node] - 1;
+          uint32_t next_pos = i + 1;
+
+          if (token_id < t->vocab_size) {
+            uint64_t features = t->token_features[token_id];
+            uint64_t requires = t->token_requires[token_id];
+            uint64_t forbids = t->token_forbids[token_id];
+
+            if (lattice_edge_valid(&parent_state, requires, forbids, features)) {
+              float score = 0.0f;
+              LatticeConstraintState next_state = {
+                .active_features = parent_state.active_features | features,
+                .forbidden_features = parent_state.forbidden_features | forbids,
+                .accumulated_score = parent_state.accumulated_score + score
+              };
+              lattice_beam_insert(&lattice, next_pos, &next_state, token_id, parent_idx);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  LatticeBeamQueue *final_beam = &lattice.columns[n_syls];
+  if (final_beam->count == 0) return -1;
+
+  uint32_t best_node_idx = final_beam->arena_indices[0];
+  float max_score = lattice.arena_buffer[best_node_idx].state.accumulated_score;
+  for (uint32_t i = 1; i < final_beam->count; i++) {
+    uint32_t idx = final_beam->arena_indices[i];
+    if (lattice.arena_buffer[idx].state.accumulated_score > max_score) {
+      max_score = lattice.arena_buffer[idx].state.accumulated_score;
+      best_node_idx = idx;
+    }
+  }
+
+  uint32_t rev_stack[LATTICE_MAX_POS];
+  uint32_t rev_count = 0;
+  uint32_t curr = best_node_idx;
+
+  while (curr != 0xFFFFFFFF) {
+    uint32_t tid = lattice.arena_buffer[curr].token_id;
+    if (tid != 0xFFFFFFFF) {
+      if (__builtin_expect(rev_count >= LATTICE_MAX_POS, 0)) return -1;
+      rev_stack[rev_count++] = tid;
+    }
+    curr = lattice.arena_buffer[curr].parent_arena_idx;
+  }
+
+  if (__builtin_expect(rev_count > out_capacity, 0)) return -1;
+  for (uint32_t i = 0; i < rev_count; i++) {
+    out_tokens[i] = rev_stack[rev_count - 1 - i];
+  }
+
+  return (int)rev_count;
 }
 
 const char *tokenizer_decode(const Tokenizer *t, uint32_t token_id) {
