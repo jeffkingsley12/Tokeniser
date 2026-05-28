@@ -122,6 +122,10 @@ CompressPairEntry *pair_table_insert(PairHashTable *ht, uint32_t pair, uint32_t 
             ht->size = new_size;
             ht->mask = new_mask;
             hash = ht_hash(pair, ht->mask);
+        } else {
+            fprintf(stderr,
+                "[compress] pair_table rehash failed (new_size=%u); "
+                "continuing with degraded hash performance\n", new_size);
         }
     }
 
@@ -305,7 +309,10 @@ uint32_t *compress_get_symbol_stack(CompressContext *ctx, size_t min_capacity) {
         if (!new_stack) return NULL;
         
         ctx->symbol_stack = new_stack;
-        ctx->stack_capacity = new_capacity;
+        /* FIX: new_capacity is size_t; stack_capacity field is uint32_t (or size_t
+         * if you have updated the header).  Guard against silent truncation. */
+        if (new_capacity > UINT32_MAX) return NULL;
+        ctx->stack_capacity = (uint32_t)new_capacity;
     }
     
     return ctx->symbol_stack;

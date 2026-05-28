@@ -60,20 +60,16 @@ GrammarPruner *pruner_create(RePairState *rs, const SyllableTable *stbl)
     if (!gp) return NULL;
     gp->rs = rs;
     gp->stbl = stbl;
-    gp->expansions = calloc(MAX_RULES, sizeof(char *));
+    /* M-2: allocate exactly rule_count entries (not MAX_RULES) to avoid
+     * wasting memory and to make pruner_destroy O(rule_count).
+     * Minimum of 1 to avoid calloc(0,...) which is implementation-defined. */
+    uint32_t alloc_rules = rs->rule_count > 0 ? rs->rule_count : 1;
+    gp->alloc_rules = alloc_rules;
+    gp->expansions = calloc(alloc_rules, sizeof(char *));
     /* expansion_lens stores byte lengths of cached expansion strings.
-     * Re-Pair rules can expand into arbitrarily long strings; uint16_t
-     * (max 65 535) silently truncates lengths on deeply nested rules,
-     * corrupting the length cache and causing over/under-reads at inference
-     * time.  uint32_t (max ~4 GB) is always sufficient.
-     *
-     * REQUIRED: also change the field declaration in tokenizer.h from
-     *   uint16_t *expansion_lens;
-     * to
-     *   uint32_t *expansion_lens;
-     */
-    gp->expansion_lens = calloc(MAX_RULES, sizeof(uint32_t));
-    gp->expanded = calloc(MAX_RULES, sizeof(bool));
+     * uint32_t (max ~4 GB) is always sufficient for any realistic expansion. */
+    gp->expansion_lens = calloc(alloc_rules, sizeof(uint32_t));
+    gp->expanded = calloc(alloc_rules, sizeof(bool));
     gp->is_frozen = false;
     if (!gp->expansions || !gp->expansion_lens || !gp->expanded) {
         pruner_destroy(gp);
@@ -89,7 +85,8 @@ void pruner_destroy(GrammarPruner *gp)
 
     /* Free cached expansions */
     if (gp->expansions) {
-        for (uint32_t i = 0; i < MAX_RULES; i++) {
+        uint32_t n = gp->alloc_rules > 0 ? gp->alloc_rules : 0;
+        for (uint32_t i = 0; i < n; i++) {
             free(gp->expansions[i]);
             gp->expansions[i] = NULL;
         }
@@ -309,9 +306,23 @@ static const char *expand_sym(GrammarPruner       *gp,
     expand_sym(gp, r->rhs[0], stbl, left,  sizeof left,  depth + 1, in_expand);
     expand_sym(gp, r->rhs[1], stbl, right, sizeof right, depth + 1, in_expand);
 
+    /* C-5: The recursive call stores the *full* expansion in gp->expansions[child_idx]
+     * even when the child's text exceeded the 256-byte stack buffer passed to it.
+     * Reading back from the cache guarantees we concatenate the complete strings;
+     * using 'left'/'right' directly would silently use a truncated copy whenever
+     * a child expansion is >= MAX_PRUNER_CHARS bytes. */
+    uint32_t lhs_idx = r->rhs[0];
+    uint32_t rhs_idx = r->rhs[1];
+    const char *full_left  = (lhs_idx < gp->rs->rule_count &&
+                              gp->expanded[lhs_idx] && gp->expansions[lhs_idx])
+                             ? gp->expansions[lhs_idx] : left;
+    const char *full_right = (rhs_idx < gp->rs->rule_count &&
+                              gp->expanded[rhs_idx] && gp->expansions[rhs_idx])
+                             ? gp->expansions[rhs_idx] : right;
+
     /* Calculate required length to prevent UTF-8 truncation */
-    size_t left_len = strlen(left);
-    size_t right_len = strlen(right);
+    size_t left_len  = strlen(full_left);
+    size_t right_len = strlen(full_right);
     size_t total_len = left_len + right_len;
     
     if (total_len >= buf_cap) {
@@ -324,8 +335,8 @@ static const char *expand_sym(GrammarPruner       *gp,
             return buf;
         }
         
-        memcpy(dynamic_buf, left, left_len);
-        memcpy(dynamic_buf + left_len, right, right_len);
+        memcpy(dynamic_buf, full_left,  left_len);
+        memcpy(dynamic_buf + left_len, full_right, right_len);
         dynamic_buf[total_len] = '\0';
         
         /* Cache the dynamically allocated expansion */
@@ -355,8 +366,8 @@ static const char *expand_sym(GrammarPruner       *gp,
     }
     
     /* Safe to concatenate in provided buffer */
-    memcpy(buf, left, left_len);
-    memcpy(buf + left_len, right, right_len);
+    memcpy(buf, full_left,  left_len);
+    memcpy(buf + left_len, full_right, right_len);
     buf[total_len] = '\0';
 
     /* ── Populate cache ──────────────────────────────────────────────── */

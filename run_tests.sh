@@ -162,6 +162,11 @@ main() {
         "$TEST_DIR/test_syllabifier_modes.sh" \
         "Syllabifier Modes Test (Louds/Viterbi/Hybrid)"
 
+    # Run the compiled learning loop integration test
+    LD_LIBRARY_PATH=. run_unit_test "learning_loop" \
+        "$TEST_DIR/test_learning_loop" \
+        "Gemini Core Engine Learning Loop & Promotion"
+
     log_header "Source Code Tests"
 
     # List available test source files

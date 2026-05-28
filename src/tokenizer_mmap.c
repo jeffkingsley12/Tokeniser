@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <inttypes.h>
+#include <string.h>
 
 /* Alignment helper */
 #define ALIGN8(x) (((x) + 7ULL) & ~7ULL)
@@ -37,10 +38,22 @@ int tokenizer_save_mmap(const Tokenizer *t, const char *path) {
     return -1;
 }
 
+#define MMAP_MIN_SUPPORTED_VERSION 14
+#define MMAP_CURRENT_VERSION        15
+
 static int verify_mmap_header(const MmapHeader *hdr, size_t file_size) {
     if (file_size < sizeof(MmapHeader)) return -1;
     if (memcmp(hdr->magic, "LGMMAPv1", 8) != 0) return -1;
-    if (hdr->version < 14 || hdr->version > 15) return -1;   /* expect v14 (CSR) or v15 (Truth) */
+    if (hdr->version < MMAP_MIN_SUPPORTED_VERSION ||
+        hdr->version > MMAP_CURRENT_VERSION) {
+        fprintf(stderr,
+            "[load_mmap] Unsupported format version %u "
+            "(supported: %u\u2013%u)\n",
+            hdr->version,
+            MMAP_MIN_SUPPORTED_VERSION,
+            MMAP_CURRENT_VERSION);
+        return -1;
+    }
     
     /* Security Fix: data_size covers the header + payload, but not the 4-byte CRC at the end */
     if (file_size < 4 || hdr->data_size != (uint64_t)(file_size - 4)) return -1;
@@ -68,7 +81,8 @@ static MmapTokenizer *tokenizer_load_mmap_internal(void *base, size_t size) {
     /* -------------------------------------------------------------------------
      * Security Fix: Verify CRC32 Integrity before processing any offsets
      * ------------------------------------------------------------------------- */
-    uint32_t expected_crc = *(uint32_t *)((char *)base + size - 4);
+    uint32_t expected_crc;
+    memcpy(&expected_crc, (const char *)base + size - 4, sizeof(uint32_t));
     uint32_t actual_crc = crc32_update(0, (const uint8_t *)base, size - 4);
     
     if (actual_crc != expected_crc) {
@@ -110,23 +124,55 @@ static MmapTokenizer *tokenizer_load_mmap_internal(void *base, size_t size) {
     /* --- LOUDS CSR Trie --- */
     if (hdr->louds_offset > 0) {
         if (check_range(size, hdr->louds_offset, sizeof(LOUDS)) != 0) goto fail;
-        t->louds = (LOUDS *)OFF2PTR(base, hdr->louds_offset);
+        
+        /* Copy LOUDS header to heap so we can fix up pointers in it */
+        t->louds = malloc(sizeof(LOUDS));
+        if (!t->louds) goto fail;
+        memcpy(t->louds, OFF2PTR(base, hdr->louds_offset), sizeof(LOUDS));
+        
         LOUDS *l = t->louds;
-        uint8_t *louds_base = (uint8_t *)l;
+        uint8_t *louds_base_on_disk = (uint8_t *)OFF2PTR(base, hdr->louds_offset);
         uint64_t l_size = (uint64_t)sizeof(LOUDS);
 
+        /* C-3: cap node/edge counts before any arithmetic to prevent
+         * ALIGN8 overflow on adversarial input.  65 M nodes/edges is far
+         * above any realistic vocabulary size while staying inside uint32_t. */
+#define MAX_LOUDS_NODES  ((uint32_t)0x03FFFFFF)  /* ~67 M */
+#define MAX_LOUDS_EDGES  ((uint32_t)0x03FFFFFF)
+        if (l->csr_node_count > MAX_LOUDS_NODES || l->csr_edge_count > MAX_LOUDS_EDGES) {
+            fprintf(stderr, "[load_mmap] LOUDS node/edge count out of range "
+                    "(nodes=%u edges=%u)\n", l->csr_node_count, l->csr_edge_count);
+            goto fail;
+        }
+        uint64_t row_bytes  = ((uint64_t)l->csr_node_count + 1) * 4;
         uint64_t off_row_ptr = ALIGN8(l_size);
-        uint64_t off_edges   = ALIGN8(off_row_ptr + ((uint64_t)l->node_count + 1) * 4);
-        uint64_t off_next    = ALIGN8(off_edges   + (uint64_t)l->edge_count * 2);
-        uint64_t off_term    = ALIGN8(off_next    + (uint64_t)l->edge_count * 4);
-        uint64_t louds_total = off_term    + (uint64_t)l->edge_count * 4;
+        if (off_row_ptr < l_size) goto fail;            /* ALIGN8 overflow */
+        uint64_t tmp1 = off_row_ptr + row_bytes;
+        if (tmp1 < off_row_ptr) goto fail;
+        uint64_t off_edges = ALIGN8(tmp1);
+        if (off_edges < tmp1) goto fail;
+        uint64_t tmp2 = off_edges + (uint64_t)l->csr_edge_count * 2;
+        if (tmp2 < off_edges) goto fail;
+        uint64_t off_next = ALIGN8(tmp2);
+        if (off_next < tmp2) goto fail;
+        uint64_t tmp3 = off_next + (uint64_t)l->csr_edge_count * 4;
+        if (tmp3 < off_next) goto fail;
+        uint64_t off_term = ALIGN8(tmp3);
+        if (off_term < tmp3) goto fail;
+        /* FIX: terminals[] is indexed by node (0..node_count-1), not by edge. */
+        uint64_t tmp4 = off_term + (uint64_t)l->csr_node_count * 4;
+        if (tmp4 < off_term) goto fail;
+        uint64_t louds_total = tmp4;
 
         if (check_range(size, hdr->louds_offset, louds_total) != 0) goto fail;
 
-        l->row_ptr   = (uint32_t *)(louds_base + (size_t)off_row_ptr);
-        l->labels    = (uint16_t *)(louds_base + (size_t)off_edges);
-        l->next_node = (uint32_t *)(louds_base + (size_t)off_next);
-        l->terminals = (uint32_t *)(louds_base + (size_t)off_term);
+        l->has_csr = true;
+        l->is_mmap_backed = true;
+
+        l->row_ptr   = (uint32_t *)(louds_base_on_disk + (size_t)off_row_ptr);
+        l->labels    = (uint16_t *)(louds_base_on_disk + (size_t)off_edges);
+        l->next_node = (uint32_t *)(louds_base_on_disk + (size_t)off_next);
+        l->terminals = (uint32_t *)(louds_base_on_disk + (size_t)off_term);
     }
 
     /* --- String table expansions --- */
@@ -155,6 +201,7 @@ fail:
     if (t->syl) syllabifier_destroy(t->syl);
     if (t->rs) free(t->rs);
     if (t->gp_expansions) free(t->gp_expansions);
+    if (t->louds) louds_destroy(t->louds);
     free(mt);
     return NULL;
 }
@@ -181,9 +228,13 @@ MmapTokenizer *tokenizer_load_mmap(const char *path) {
 
 MmapTokenizer *tokenizer_load_mmap_from_buffer(const void *buf, size_t size) {
     if (!buf || size < sizeof(MmapHeader)) return NULL;
-    MmapTokenizer *mt = tokenizer_load_mmap_internal((void *)buf, size);
+    /* M-6: buf is const; we store it as const in mmap_base when owns_buffer=false
+     * so that any future write-path through mmap_base cannot reach it.
+     * The cast here is safe only because tokenizer_load_mmap_internal never
+     * writes through the pointer for read-only (owns_buffer=false) mappings. */
+    MmapTokenizer *mt = tokenizer_load_mmap_internal((void *)(uintptr_t)buf, size);
     if (mt) {
-        mt->owns_buffer = false; /* caller owns the buffer */
+        mt->owns_buffer = false; /* caller owns the buffer; must not munmap it */
     }
     return mt;
 }
@@ -199,7 +250,11 @@ void tokenizer_destroy_mmap(MmapTokenizer *mt) {
         free(t->stbl);
     }
     if (t->syl) syllabifier_destroy(t->syl);
+    if (t->louds) louds_destroy(t->louds);
     if (t->id_to_str) free(t->id_to_str);
+    free(t->token_features);
+    free(t->token_requires);
+    free(t->token_forbids);
     if (t->rs) free(t->rs);
     if (t->gp_expansions) free(t->gp_expansions);
 

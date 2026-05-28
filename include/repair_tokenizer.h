@@ -10,7 +10,14 @@
  * Symbol encoding (uint32_t):
  *   [0,   BASE_SYMBOLS)  → raw syllable IDs
  *   [BASE_SYMBOLS, ...)  → grammar rule IDs (rule_id + BASE_SYMBOLS)
+ *
+ * IMPORTANT: This header includes repair_train.h which contains training-only
+ * definitions with TRAIN_ prefixes to avoid ODR violations with tokenizer.h.
+ * Never include this header from tokenizer.h - it should only be used by
+ * training implementation files.
  */
+
+#include "repair_train.h"
 
 #include <stdint.h>
 #include <stddef.h>
@@ -18,19 +25,44 @@
 #include <stdio.h>
 
 /* ──────────────────────────────────────────────────────────── */
-/*  Compile-time limits                                         */
+/*  Compile-time limits (guarded for include-order safety)      */
 /* ──────────────────────────────────────────────────────────── */
+#ifndef BASE_SYMBOLS
 #define BASE_SYMBOLS      1024u   /* max distinct syllables          */
+#endif
+
+#ifndef MAX_RULES
 #define MAX_RULES         65536u  /* max Re-Pair grammar rules        */
+#endif
+
+#ifndef MAX_RULE_DEPTH
 #define MAX_RULE_DEPTH    12u     /* max nesting depth before flatten */
+#endif
+
+#ifndef MIN_PAIR_FREQ
 #define MIN_PAIR_FREQ     3u      /* break-even threshold (f > 2)     */
+#endif
+
+#ifndef MAX_VOCAB
 #define MAX_VOCAB         40960u  /* BASE_SYMBOLS + MAX_RULES         */
+#endif
+
+#ifndef MAX_FLAT_LEN
 #define MAX_FLAT_LEN      64u     /* max syllables in one flattened rule */
+#endif
+
+#ifndef MAX_SEQ_LEN
 #define MAX_SEQ_LEN       (1 << 24) /* max symbols in training corpus */
+#endif
+
+#ifndef PAIR_HTABLE_SIZE
 #define PAIR_HTABLE_SIZE  (1 << 20) /* hash table buckets (power of 2) */
+#endif
 
 /* sentinel – marks deleted/invalid slots */
+#ifndef INVALID_SYM
 #define INVALID_SYM  UINT32_MAX
+#endif
 
 /* ──────────────────────────────────────────────────────────── */
 /*  Syllabifier                                                 */
@@ -129,8 +161,11 @@ typedef struct {
 int  heap_init(MaxHeap *h, uint32_t capacity);
 void heap_free(MaxHeap *h);
 int  heap_push(MaxHeap *h, HeapEntry e);         /* 0 ok, -1 OOM */
-HeapEntry heap_pop(MaxHeap *h);                  /* UB if empty  */
+HeapEntry heap_pop(MaxHeap *h);                  /* UB if empty - caller must guarantee !heap_empty(h) */
 bool heap_empty(const MaxHeap *h);
+
+/* Checked variant: returns false if heap is empty, true if pop succeeded */
+bool heap_try_pop(MaxHeap *h, HeapEntry *out);
 
 /* ──────────────────────────────────────────────────────────── */
 /*  Grammar rule                                                */
@@ -155,7 +190,7 @@ typedef struct {
 int  grammar_init(Grammar *g);
 void grammar_free(Grammar *g);
 
-/* Add rule X → left right; returns new symbol ID for X. */
+/* Add rule X → left right; returns new symbol ID for X, or INVALID_SYM on failure. */
 uint32_t grammar_add(Grammar *g, uint32_t left, uint32_t right, uint32_t freq);
 
 /* ──────────────────────────────────────────────────────────── */

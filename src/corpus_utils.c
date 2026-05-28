@@ -87,6 +87,13 @@ Corpus *corpus_load(const char *path, size_t max_bytes, uint32_t max_lines,
         }
     }
 
+    /* Guarantee a null terminator at the very end of the mapped region
+     * to prevent strlen() from reading past the mmap boundary on files
+     * without a trailing newline. MAP_PRIVATE gives us a private page. */
+    if (file_len > 0) {
+        ((char *)ptr)[file_len - 1] = '\0';
+    }
+
     /* Phase 2: Scan for non-empty document strings */
     while (p < end) {
         /* Skip leading nulls (empty lines) */

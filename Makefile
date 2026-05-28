@@ -3,8 +3,14 @@
 
 # Compiler settings
 CC ?= gcc
-CFLAGS = -Wall -Wextra -O2 -fPIC -MMD -MP
-CFLAGS_DEBUG = -Wall -Wextra -g -O0 -DDEBUG -fPIC -MMD -MP
+CFLAGS = -Wall -Wextra -O2 -g -fPIC -MMD -MP -D_GNU_SOURCE \
+         -I$(INC_DIR) \
+         -I$(SRC_DIR)/lg_engine/include \
+         -I$(SRC_DIR)/lg_engine/src/enhanced
+CFLAGS_DEBUG = -Wall -Wextra -g -O0 -DDEBUG -fPIC -MMD -MP -D_GNU_SOURCE \
+               -I$(INC_DIR) \
+               -I$(SRC_DIR)/lg_engine/include \
+               -I$(SRC_DIR)/lg_engine/src/enhanced
 LDFLAGS = -lm
 
 # Directories
@@ -32,7 +38,8 @@ CORE_SOURCES = \
 	$(SRC_DIR)/syllabifier_seed.c \
 	$(SRC_DIR)/stream_tokenizer.c \
 	$(SRC_DIR)/corpus_utils.c \
-	$(SRC_DIR)/truth_layer.c
+	$(SRC_DIR)/truth_layer.c \
+	$(SRC_DIR)/tokenizer_beam.c
 
 MAIN_SOURCES = $(CORE_SOURCES) $(SRC_DIR)/main.c
 
@@ -54,17 +61,47 @@ TEST_BINARIES = $(patsubst $(TEST_DIR)/%.c,$(TEST_DIR)/%,$(TEST_SOURCES))
 DEPS = $(MAIN_OBJS:.o=.d) $(BENCH_OBJS:.o=.d) $(MMAP_OBJS:.o=.d)
 
 # Default target
-.PHONY: all clean debug test bench install dirs help
+.PHONY: all clean debug test bench install dirs help asan
 
-all: dirs tokenizer_demo bench lib test_bins
+all: dirs tokenizer_demo bench lib test_bins engine_tools
+
+# Engine source files and includes
+ENGINE_INC = -I$(INC_DIR) -I$(SRC_DIR)/lg_engine/include -I$(SRC_DIR)/lg_engine/src -I$(SRC_DIR)/lg_engine/src/enhanced
+
+# Find all engine source files recursively (excluding demo and test)
+ENGINE_ALL_SRC = $(shell find $(SRC_DIR)/lg_engine/src -name "*.c" ! -path "*/demo/*" ! -path "*/test/*")
+ENGINE_ALL_OBJ = $(patsubst $(SRC_DIR)/lg_engine/src/%.c,$(BUILD_HYBRID)/lg_engine/%.o,$(ENGINE_ALL_SRC))
+
+LIBGEMINI_CORE = libgemini_core.a
+
+# Build static library
+$(LIBGEMINI_CORE): $(ENGINE_ALL_OBJ)
+	ar rcs $@ $^
+
+# Compile engine sources into objects
+$(BUILD_HYBRID)/lg_engine/%.o: $(SRC_DIR)/lg_engine/src/%.c | dirs
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(ENGINE_INC) -c $< -o $@
+	
+engine_tools: lib $(LIBGEMINI_CORE) dirs
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o online_learning $(SRC_DIR)/lg_engine/src/demo/online_learning.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o autocomplete_cli $(SRC_DIR)/lg_engine/src/demo/autocomplete_cli.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o test_lineage $(SRC_DIR)/lg_engine/src/demo/test_lineage.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o benchmark_latency $(SRC_DIR)/lg_engine/src/demo/benchmark_latency.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o compare_snapshots $(SRC_DIR)/lg_engine/src/demo/compare_snapshots.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
 
 # Create build directories
 dirs:
 	@mkdir -p $(BUILD_HYBRID) $(BUILD_DEBUG) $(OBJ_DIR)
 
 # Shared library for Python/FFI integration
-lib: dirs
-	$(CC) $(CFLAGS) -shared -fPIC $(INCLUDES) -o libluganda_tok.so $(CORE_SOURCES) $(SRC_DIR)/tokenizer_api.c $(LDFLAGS)
+lib: dirs libluganda_tok.so libgemini.so
+
+libluganda_tok.so: dirs
+	$(CC) $(CFLAGS) -shared -fPIC $(INCLUDES) -o libluganda_tok.so $(MMAP_SOURCES) $(SRC_DIR)/tokenizer_api.c $(LDFLAGS)
+
+libgemini.so: dirs libluganda_tok.so $(LIBGEMINI_CORE)
+	$(CC) $(CFLAGS) -shared -fPIC $(ENGINE_INC) -o libgemini.so $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
 
 # Main tokenizer demo executable
 tokenizer_demo: dirs $(MAIN_OBJS)
@@ -139,6 +176,9 @@ $(TEST_DIR)/test_lexical_domain: $(TEST_DIR)/test_lexical_domain.c $(CORE_SOURCE
 $(TEST_DIR)/test_production_stress: $(TEST_DIR)/test_production_stress.c $(CORE_SOURCES)
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
+$(TEST_DIR)/test_learning_loop: $(TEST_DIR)/test_learning_loop.c $(LIBGEMINI_CORE) libluganda_tok.so
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $@ $(TEST_DIR)/test_learning_loop.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+
 # Build all test binaries
 test_bins: $(TEST_BINARIES)
 
@@ -159,7 +199,7 @@ run-bench: bench
 # Clean build artifacts
 clean:
 	rm -rf $(BUILD_DIR) $(OBJ_DIR)
-	rm -f tokenizer_demo tokenizer_debug bench benchmark_luganda tokenizer_mmap
+	rm -f tokenizer_demo tokenizer_debug bench benchmark_luganda tokenizer_mmap libluganda_tok.so libgemini.so libgemini_core.a benchmark_latency online_learning test_lineage compare_snapshots
 	rm -f $(TEST_BINARIES)
 	rm -rf test_results benchmark_results
 
@@ -186,6 +226,7 @@ help:
 	@echo "  make test         - Build and run all tests"
 	@echo "  make run-bench    - Build and run benchmarks"
 	@echo "  make clean        - Remove all build artifacts"
+	@echo "  make asan         - Build with AddressSanitizer and UndefinedBehaviorSanitizer"
 	@echo "  make help         - Show this help message"
 	@echo ""
 	@echo "Directories:"
@@ -194,3 +235,11 @@ help:
 	@echo "  test/             - Test files"
 	@echo "  build/hybrid/     - Release build objects"
 	@echo "  build/debug/      - Debug build objects"
+
+# Build with AddressSanitizer and UndefinedBehaviorSanitizer
+asan:
+	@echo "🛡️ Building with AddressSanitizer and UndefinedBehaviorSanitizer..."
+	@$(MAKE) clean
+	@$(MAKE) test_bins \
+		CFLAGS="-Wall -Wextra -g3 -O1 -fsanitize=address,undefined -fno-omit-frame-pointer -D_GNU_SOURCE -DDEBUG" \
+		LDFLAGS="-fsanitize=address,undefined -lm"

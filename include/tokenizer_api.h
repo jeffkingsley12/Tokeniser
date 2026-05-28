@@ -36,6 +36,18 @@ const char *tok_decode(int handle, uint32_t id);
  */
 void        tok_free(int handle);
 
+/**
+ * Get the total vocabulary size of the loaded tokenizer model.
+ * Returns the vocabulary count, or 0 on invalid handle.
+ */
+uint32_t    tok_vocab_size(int handle);
+
+/**
+ * Get the cumulative count of tokens encoded by this handle.
+ * Returns total tokens encoded, or 0 on invalid handle.
+ */
+uint64_t    tok_tokens_encoded(int handle);
+
 #ifdef __cplusplus
 }
 #endif

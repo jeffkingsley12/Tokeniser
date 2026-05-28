@@ -1,0 +1,11 @@
+MANIFEST.in
+README.md
+pyproject.toml
+setup.py
+../libluganda_tok.so
+luganda_tokenizer.egg-info/PKG-INFO
+luganda_tokenizer.egg-info/SOURCES.txt
+luganda_tokenizer.egg-info/dependency_links.txt
+luganda_tokenizer.egg-info/requires.txt
+luganda_tokenizer.egg-info/top_level.txt
+tests/test_tokenizer.py

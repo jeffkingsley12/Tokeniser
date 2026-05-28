@@ -1,33 +1,28 @@
 """
-Luganda Tokenizer - Native Python Implementation
+Luganda Tokenizer - Python FFI Bindings
 
-A pure Python rewrite of the C tokenizer with clean, Pythonic APIs.
-Optimized for both readability and performance using modern Python features.
+High-performance Python bindings for the C tokenizer.
+Uses FFI (ctypes) to wrap libluganda_tok.so with zero code duplication.
 
 Basic Usage:
     >>> from python_tokenizer import LugandaTokenizer
-    >>> tokenizer = LugandaTokenizer()
-    >>> tokenizer.train(["oluganda lwe ggwanga"])
+    >>> tokenizer = LugandaTokenizer.load("model.bin")
     >>> tokens = tokenizer.encode("nze mbaagala")
     >>> text = tokenizer.decode(tokens)
 
-Advanced Usage with Pre-trained Model:
-    >>> tokenizer = LugandaTokenizer.load("model.bin")
-    >>> tokens = tokenizer.encode_batch(corpus, num_workers=4)
+Training (use C tools):
+    $ make tokenizer_demo
+    $ ./tokenizer_demo --train corpus.txt --save model.bin
 """
 
 __version__ = "1.0.0"
-__author__ = "Jeff .K. Mukisa"
+__author__ = "AI Assisted Port"
 
-from .tokenizer import LugandaTokenizer
-from .syllabifier import Syllabifier, SyllableTable
-from .louds import LoudsTrie
-from .grammar import Grammar
+from .luganda_tokenizer import LugandaTokenizer, load_tokenizer
+from .closed_loop_agent import LugandaClosedLoopEngineAgent
 
 __all__ = [
     "LugandaTokenizer",
-    "Syllabifier", 
-    "SyllableTable",
-    "LoudsTrie",
-    "Grammar",
+    "load_tokenizer",
+    "LugandaClosedLoopEngineAgent",
 ]

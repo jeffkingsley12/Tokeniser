@@ -375,7 +375,7 @@ static inline bool __attribute__((unused)) lug_is_confusable(uint32_t cp)
     case 0x043Eu: /* CYRILLIC SMALL LETTER O */
     case 0x0443u: /* CYRILLIC SMALL LETTER U */
     case 0x0456u: /* CYRILLIC SMALL LETTER BYELORUSSIAN-UKRAINIAN I */
-    case 0x014Au: /* LATIN CAPITAL LETTER ENG (Ŋ — use lowercase ŋ) */
+        /* Removed: case 0x014Au - LATIN CAPITAL LETTER ENG (Ŋ) is valid Luganda */
         return true;
     default:
         return false;

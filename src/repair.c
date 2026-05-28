@@ -542,6 +542,14 @@ int repair_train(RePairState *rs, const uint16_t **corpus, const uint32_t *lengt
         rule->eff_freq = freq;
         rule->depth = new_depth;
         rule->dead = false;
+        
+        /* Initialize constraint masks to zero for now.
+         * These will be populated during a separate pass over the grammar
+         * after training, when we have access to the SyllableTable with
+         * base feature assignments. */
+        rule->features = 0;
+        rule->requires = 0;
+        rule->forbids = 0;
 
         replace_pair(rs, L, R, X);
     }
@@ -644,8 +652,8 @@ int repair_compress(const RePairState *rs, uint32_t **seq, uint32_t *len) {
     if (*len == 0) return 0;
 
     uint32_t ht_size = COMPRESS_HT_SIZE;
-    if (ht_size < rs->rule_count * 2) {
-        ht_size = next_pow2(rs->rule_count * 2);
+    if (ht_size < rs->rule_count * 4) {
+        ht_size = next_pow2(rs->rule_count * 4);
     }
 
     CompressEntry *ht = calloc(ht_size, sizeof *ht);
@@ -685,8 +693,8 @@ int repair_compress_with_context(RePairCompressor *comp, const RePairState *rs, 
     if (!comp || !rs || !seq || !len) return -1;
     if (*len == 0) return 0;
     
-    if (comp->ht_size < rs->rule_count * 2) {
-        uint32_t new_size = next_pow2(rs->rule_count * 2);
+    if (comp->ht_size < rs->rule_count * 4) {
+        uint32_t new_size = next_pow2(rs->rule_count * 4);
         if (new_size < COMPRESS_HT_SIZE) new_size = COMPRESS_HT_SIZE;
         CompressEntry *new_ht = calloc(new_size, sizeof(*new_ht));
         if (!new_ht) return -1;
@@ -718,7 +726,6 @@ int repair_train_with_mask(RePairState *rs, const uint16_t **corpus,
         if (masks && masks[i] && len > 1) {
             flags = calloc(len, sizeof(uint16_t));
             if (!flags) {
-                for (uint32_t j = 0; j < i; j++) free(heads[j]);
                 free(heads);
                 return -1;
             }
@@ -731,9 +738,8 @@ int repair_train_with_mask(RePairState *rs, const uint16_t **corpus,
         
         heads[i] = build_list(rs, corpus[i], flags, len);
         free(flags);
-        
+
         if (!heads[i]) {
-            for (uint32_t j = 0; j < i; j++) free(heads[j]);
             free(heads);
             return -1;
         }
@@ -745,7 +751,9 @@ int repair_train_with_mask(RePairState *rs, const uint16_t **corpus,
     for (uint32_t i = 0; i < n_seqs; i++) total_symbols += lengths[i];
     uint32_t target_size = next_pow2((uint32_t)(total_symbols / 4) * 2);
     if (target_size < PAIR_HT_INIT_SIZE) target_size = PAIR_HT_INIT_SIZE;
-    if (target_size > rs->pair_ht_size) pair_ht_resize(rs, target_size);
+    if (target_size > rs->pair_ht_size) {
+        if (pair_ht_resize(rs, target_size) != 0) goto oom;
+    }
 
     count_pairs(rs, heads, n_seqs);
     if (rs->fatal_oom) goto oom;
@@ -760,14 +768,40 @@ int repair_train_with_mask(RePairState *rs, const uint16_t **corpus,
         uint32_t R = (uint32_t)(best & 0xFFFFFFFF) - 1;
         uint32_t X = rs->next_sym++;
 
+        /* FIX: repair_train checks MAX_RULE_DEPTH here; repair_train_with_mask
+         * was missing the same guard, allowing pathological or adversarial
+         * inputs to create rules deeper than EXPAND_DEPTH_LIMIT.  The grammar
+         * pruner and expand_sym() both rely on the depth invariant. */
+        uint8_t d_l = rule_depth(rs, L);
+        uint8_t d_r = rule_depth(rs, R);
+        uint8_t new_depth = 1 + (d_l > d_r ? d_l : d_r);
+        if (new_depth > MAX_RULE_DEPTH) {
+            bool found_slot;
+            uint32_t slot = pair_ht_find(rs, best, &found_slot);
+            if (found_slot) {
+                rs->pair_freq[slot] = 0;
+                heap_update(rs, slot);
+            }
+            rs->next_sym--;
+            continue;
+        }
+
         Rule *rule = &rs->rules[rs->rule_count++];
         rule->lhs = X;
         rule->rhs[0] = L;
         rule->rhs[1] = R;
         rule->freq = freq;
         rule->eff_freq = freq;
-        rule->depth = 1 + (rule_depth(rs, L) > rule_depth(rs, R) ? rule_depth(rs, L) : rule_depth(rs, R));
+        rule->depth = new_depth;
         rule->dead = false;
+        
+        /* Initialize constraint masks to zero for now.
+         * These will be populated during a separate pass over the grammar
+         * after training, when we have access to the SyllableTable with
+         * base feature assignments. */
+        rule->features = 0;
+        rule->requires = 0;
+        rule->forbids = 0;
 
         replace_pair(rs, L, R, X);
     }

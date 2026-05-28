@@ -12,6 +12,7 @@ typedef struct {
     size_t total_bytes;
     void  *mmap_ptr;   /* Pointer to mapped file region */
     size_t mmap_len;   /* Total size of the mapped region */
+    bool   is_mmap;    /* true if docs point into mmap_ptr; false if heap-allocated */
 } Corpus;
 
 /**

@@ -113,6 +113,15 @@ Java_com_example_nlp_Tokenizer_nativeTokenize(JNIEnv *env, jobject thiz,
     jintArray result = (*env)->NewIntArray(env, token_count);
     if (!result) return NULL;
 
+    /* Range check: ensure all token IDs fit in jint (int32_t) range */
+    for (int i = 0; i < token_count; i++) {
+        if (tokens[i] > (uint32_t)INT32_MAX) {
+            fprintf(stderr, "[android_asset_loader] Token ID %u exceeds INT32_MAX, truncation would occur\n", tokens[i]);
+            (*env)->DeleteLocalRef(env, result);
+            return NULL;
+        }
+    }
+
     /* Copy tokens to Java array.
      * jint is int32_t (JNI spec §12.4), uint32_t is the same width.
      * Token IDs must be in range [0, INT32_MAX]; values above that would

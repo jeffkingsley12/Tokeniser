@@ -68,9 +68,10 @@ typedef struct {
 #define SEED_INFIX        TRUTH_INFIX
 #define SEED_TRUTH        (TRUTH_PREFIX | TRUTH_ROOT | TRUTH_PARTICLE | \
                            TRUTH_SUFFIX | TRUTH_REDUP | TRUTH_LOAN)
-/* SEED_FROZEN is stored in the upper bit of SeedMeta::flags to mark
- * seeds that must not be overwritten during corpus-driven updates. */
-#define SEED_FROZEN       (1u << 31)
+/* SEED_FROZEN is stored in bit 30 of SeedMeta::flags to mark
+ * seeds that must not be overwritten during corpus-driven updates.
+ * Moved from bit 31 to avoid conflict with TRUTH_TERMINAL_BIT. */
+#define SEED_FROZEN       (1u << 30)
 
 /* -----------------------------------------------------------------------
  * TruthTrie

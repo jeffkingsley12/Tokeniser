@@ -3,6 +3,16 @@
 
 #include "tokenizer_config.h"
 
+#ifndef TOKENIZER_CONFIG_VERSION
+#error "tokenizer_config.h must be included before tokenizer.h"
+#endif
+
+#define TOKENIZER_H_EXPECTED_CONFIG 2
+
+#if TOKENIZER_CONFIG_VERSION != TOKENIZER_H_EXPECTED_CONFIG
+#error "tokenizer_config.h version mismatch: expected 2, got " #TOKENIZER_CONFIG_VERSION
+#endif
+
 #include <stdbool.h>
 #include <stdatomic.h>
 #include <stddef.h>
@@ -37,11 +47,25 @@ static inline void *safe_malloc(size_t count, size_t size) {
     return malloc(count * size);
 }
 
+#ifndef DENSE_HASH_SIZE
 #define DENSE_HASH_SIZE      1024
+#endif
+
+#ifndef MAX_SEQ_LEN
 #define MAX_SEQ_LEN          32
+#endif
+
+#ifndef MAX_RULE_DEPTH
 #define MAX_RULE_DEPTH       128
+#endif
+
+#ifndef SPECIAL_TOKENS_COUNT
 #define SPECIAL_TOKENS_COUNT 5
+#endif
+
+#ifndef TOK_UNK
 #define TOK_UNK              0
+#endif
 
 /* Morphological boundary flags */
 #define TOKEN_BOUNDARY_LEFT  (1u << 0)
@@ -78,6 +102,11 @@ typedef struct {
     uint16_t depth;       /* nesting depth from terminals                */
     uint8_t  merge_flags; /* flags propagated from children          */
     bool     dead;        /* marked for elimination                  */
+    
+    /* Morphological constraint masks for beam search */
+    uint64_t features;    /* what this rule provides (union of children) */
+    uint64_t requires;    /* what this rule needs from prior state */
+    uint64_t forbids;     /* what this rule cannot coexist with */
 } Rule;
 
 /* RePairState: Training state for grammar rules.
@@ -141,7 +170,7 @@ static inline bool is_merge_allowed(const MergeMask *m, size_t i) {
  * ----------------------------------------------------------------------- */
 typedef struct SylTrieNode {
     uint32_t first_edge;  /* index of first edge in LOUDS::edges[] */
-    uint32_t token_id;    /* 0 = not a terminal; >0 = token ID + 1 */
+    uint32_t token_id;    /* UINT32_MAX = not a terminal; else token ID */
     uint16_t edge_count;
     uint16_t id;          /* node's own index (for debugging) */
 } SylTrieNode;
@@ -202,16 +231,17 @@ typedef struct {
     bool                is_frozen;
     bool                in_expand[MAX_RULES]; /* cycle detection */
     bool                fatal_oom;
+    uint32_t            alloc_rules;     /* number of allocated rule slots */
 } GrammarPruner;
 
 /* TokenizerStats: lightweight counters.
  * Incremented via STAT_INC/STAT_ADD macros which become no-ops when
- * ENABLE_STATS == 0. */
+ * ENABLE_STATS == 0. All fields are atomic to prevent data races. */
 typedef struct {
-    uint64_t syllabify_calls;
-    uint64_t syllables_produced;
-    uint64_t tokenize_calls;
-    uint64_t tokens_produced;
+    atomic_uint_fast64_t syllabify_calls;
+    atomic_uint_fast64_t syllables_produced;
+    atomic_uint_fast64_t tokenize_calls;
+    atomic_uint_fast64_t tokens_produced;
 
     /* LOUDS traversal telemetry */
     atomic_uint_fast64_t louds_single_syl_fallbacks;
@@ -257,9 +287,12 @@ typedef struct {
 
     uint32_t  n_entries;
     uint32_t  label_count;
+    uint32_t  legacy_label_count; /* syllable count for legacy flat representation */
     uint32_t  csr_node_count; /* used by mmap loader to compute sub-section sizes */
     uint32_t  csr_edge_count;
     void     *louds_bv;
+    bool      is_mmap_backed;
+    void     *constraint_data; /* Pointer to ConstraintDAWG for beam search */
 } LOUDS;
 
 /* -----------------------------------------------------------------------
@@ -284,7 +317,8 @@ typedef struct {
     TokenizerStats stats;
 
     TokenizerFastPaths *fast_paths;
-    uint16_t byte_to_syl[65536];
+    uint16_t utf8_1b_to_syl[256];
+    uint16_t utf8_2b_to_syl[2048];
     uint16_t byte_to_token[256];
     uint32_t byte_direct[256];
 
@@ -293,6 +327,13 @@ typedef struct {
     uint16_t sp_dense_keys[DENSE_HASH_SIZE];
     uint32_t sp_dense_vals[DENSE_HASH_SIZE];
     char   **morph_strings;
+
+    /* ------------------------------------------------------------------
+     * Morphological constraint masks (indexed by token_id)
+     * ------------------------------------------------------------------ */
+    uint64_t *token_features;   /* vocab_size */
+    uint64_t *token_requires;   /* vocab_size */
+    uint64_t *token_forbids;    /* vocab_size */
 
     void     *mmap_addr;
     size_t    mmap_len;
@@ -388,6 +429,8 @@ void        tokenizer_destroy(Tokenizer *t);
 /* Encoding */
 int tokenizer_encode(const Tokenizer *t, const char *text,
                      uint32_t *out, uint32_t out_cap);
+int tokenizer_encode_beam(const Tokenizer *t, const char *text,
+                          uint32_t *out, uint32_t out_cap);
 
 #if USE_FUSED
 int tokenizer_encode_fused(const Tokenizer *t, const char *text,
@@ -476,6 +519,7 @@ typedef struct {
     int       fd;          /* -1 when loaded from an Android asset */
     void     *asset_handle; /* AAsset* when loaded via Android asset manager */
     bool      owns_buffer; /* true → munmap on destroy; false → caller owns */
+    _Atomic uint64_t total_tokens_encoded;
 } MmapTokenizer;
 
 MmapTokenizer *tokenizer_load_mmap(const char *path);
@@ -510,5 +554,12 @@ typedef struct {
  * all uint64_t fields remain naturally aligned inside a mmap'd file. */
 _Static_assert(sizeof(MmapHeader) % 8 == 0,
     "MmapHeader size must be a multiple of 8 bytes for natural alignment");
+
+static inline uint32_t pack_2byte_utf8(uint8_t b1, uint8_t b2) {
+    if (b1 >= 0xC0 && b1 <= 0xDF && b2 >= 0x80 && b2 <= 0xBF) {
+        return ((b1 & 0x1F) << 6) | (b2 & 0x3F);
+    }
+    return UINT32_MAX;
+}
 
 #endif /* TOKENIZER_H */

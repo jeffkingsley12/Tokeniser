@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ExecutionTrace",
+  "type": "object",
+  "required": ["envelope", "semantic_payload", "parser_fingerprint", "side_effects"],
+  "properties": {
+    "envelope": {
+      "type": "object",
+      "required": ["event_id", "execution_id", "event_type", "timestamp_hlc", "causality", "actor"],
+      "properties": {
+        "event_id": {"type": "string", "pattern": "^evt_[a-z0-9]{16}$"},
+        "execution_id": {"type": "string", "pattern": "^ex_[a-z0-9]{12}$"},
+        "event_type": {"type": "string"},
+        "timestamp_hlc": {"type": "string", "pattern": "^[0-9]+:[0-9]+:[a-z0-9-]+$"},
+        "causality": {
+          "type": "object",
+          "properties": {
+            "parent_event_id": {"type": "string"},
+            "branch_id": {"type": "string"},
+            "causality_depth": {"type": "integer"}
+          }
+        },
+        "actor": {
+          "type": "object",
+          "properties": {
+            "type": {"type": "string", "enum": ["human", "system", "agent"]},
+            "device_id": {"type": "string"},
+            "user_id": {"type": "string"}
+          }
+        }
+      }
+    },
+    "semantic_payload": {
+      "type": "object",
+      "properties": {
+        "raw_input": {"type": "string"},
+        "normalized": {
+          "type": "object",
+          "properties": {
+            "numeric_value": {"type": "number"},
+            "currency": {"type": "string"},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1}
+          }
+        },
+        "linguistic_trace": {
+          "type": "object",
+          "properties": {
+            "language": {"type": "string"},
+            "confidence": {"type": "number"},
+            "pipeline_version": {"type": "string"},
+            "modules": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "module": {"type": "string"},
+                  "result": {},
+                  "execution_time_ms": {"type": "number"}
+                }
+              }
+            },
+            "tokenization": {
+              "type": "object",
+              "properties": {
+                "syllable_ids": {"type": "array", "items": {"type": "integer"}},
+                "morpheme_ids": {"type": "array", "items": {"type": "integer"}}
+              }
+            }
+          }
+        }
+      }
+    },
+    "parser_fingerprint": {
+      "type": "object",
+      "required": ["module", "version", "sha256"],
+      "properties": {
+        "module": {"type": "string"},
+        "version": {"type": "string"},
+        "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "config_hash": {"type": "string"}
+      }
+    },
+    "side_effects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "effect_id": {"type": "string"},
+          "effect_type": {"type": "string"},
+          "target_system": {"type": "string"},
+          "status": {"type": "string", "enum": ["pending", "applied", "failed", "reverted"]},
+          "receipt": {
+            "type": "object",
+            "properties": {
+              "applied_at": {"type": "string"},
+              "external_id": {"type": "string"},
+              "checksum": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "snapshot_contract": {
+      "type": "object",
+      "properties": {
+        "snapshot_id": {"type": "string"},
+        "state_hash": {"type": "string"},
+        "checkpoint_event_id": {"type": "string"},
+        "recovery_point": {"type": "boolean"}
+      }
+    },
+    "branch_lineage": {
+      "type": "object",
+      "properties": {
+        "branch_id": {"type": "string"},
+        "parent_branch_id": {"type": "string"},
+        "merge_target": {"type": "string"},
+        "conflict_resolution": {
+          "type": "object",
+          "properties": {
+            "strategy": {"type": "string"},
+            "resolved_at": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}

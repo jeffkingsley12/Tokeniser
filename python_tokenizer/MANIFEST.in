@@ -1,0 +1,5 @@
+include README.md
+include ../libluganda_tok.so
+include ../libluganda_tok.dylib
+include ../libluganda_tok.dll
+global-include *.so *.dylib *.dll

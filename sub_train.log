@@ -1,0 +1,48 @@
+=== Gemini Continuous Self-Training Daemon ===
+Model: production_model.bin
+Corpus: luganda_corpus_sub.txt
+Tokenizer loaded successfully.
+Initializing Gemini Engine... Required memory: 0 MB
+Gemini Linguistic Engine initialized.
+
+Starting continuous data ingestion stream...
+
+--- Epoch 1 Boundary (50000 sentences ingested) ---
+Epoch completed in 0.254 seconds.
+SCCs Merged: 753 -> 753
+New Symbols Promoted: 64 (Total DAWG Symbols: 64)
+
+=== Continuous Training Complete ===
+Total sentences: 99389
+Total epochs: 1
+Total time: 123.17 seconds (806.90 sentences/sec)
+
+Final cognitive state before forced epoch:
+  Nodes: 861
+  Edges: 29992
+  SCCs:  861
+  DAWG Symbols: 64
+
+=== Top 10 SCCs and Quality Metrics ===
+SCC 0: members: 1, coherence: 0.000000, avg_entropy: 3.975845, freq: 335, stable_epochs: 26, is_candidate: 0, is_weak: 0
+SCC 1: members: 1, coherence: 0.007812, avg_entropy: 4.145901, freq: 11420, stable_epochs: 0, is_candidate: 0, is_weak: 0
+SCC 2: members: 1, coherence: 0.001527, avg_entropy: 5.459085, freq: 666899, stable_epochs: 0, is_candidate: 0, is_weak: 0
+SCC 3: members: 1, coherence: 0.000000, avg_entropy: 5.452946, freq: 803, stable_epochs: 1, is_candidate: 0, is_weak: 0
+SCC 4: members: 1, coherence: 0.012346, avg_entropy: 3.771049, freq: 2261, stable_epochs: 0, is_candidate: 0, is_weak: 0
+SCC 5: members: 1, coherence: 0.000000, avg_entropy: 3.547330, freq: 668, stable_epochs: 0, is_candidate: 0, is_weak: 0
+SCC 6: members: 1, coherence: 0.012987, avg_entropy: 3.462659, freq: 17639, stable_epochs: 0, is_candidate: 0, is_weak: 0
+SCC 7: members: 1, coherence: 0.026316, avg_entropy: 3.755044, freq: 734, stable_epochs: 17, is_candidate: 0, is_weak: 0
+SCC 8: members: 1, coherence: 0.007752, avg_entropy: 3.873170, freq: 12886, stable_epochs: 14, is_candidate: 0, is_weak: 0
+SCC 9: members: 1, coherence: 0.004695, avg_entropy: 5.068400, freq: 17392, stable_epochs: 1, is_candidate: 0, is_weak: 0
+
+Forcing final epoch consolidation (10 iterations to clear stability threshold)...
+Final consolidation promoted 78 symbols.
+
+Final cognitive state after epoch:
+  Nodes: 861
+  Edges: 29992
+  SCCs:  861
+  DAWG Symbols: 142
+
+Saving final cognitive snapshot to gemini_cognitive_snapshot.bin...
+Final snapshot saved successfully.

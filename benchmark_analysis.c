@@ -407,7 +407,7 @@ static void profile_memory_usage(const Tokenizer* tok) {
     
     /* Fast path tables */
     printf("Fast path tables:\n");
-    printf("  byte_to_syl: %zu bytes\n", sizeof(tok->byte_to_syl));
+    printf("  utf8_1b_to_syl + utf8_2b_to_syl: %zu bytes\n", sizeof(tok->utf8_1b_to_syl) + sizeof(tok->utf8_2b_to_syl));
     printf("  cv_to_token: %zu bytes\n", sizeof(tok->cv_to_token));
     printf("  byte_to_token: %zu bytes\n", sizeof(tok->byte_to_token));
     

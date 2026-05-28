@@ -51,8 +51,8 @@ static ssize_t stream_refill(StreamTokenizer *st, int fd) {
 
 
 static size_t find_last_safe_boundary(const uint8_t *buf, size_t len) {
-    if (len < 4) return 0; // Ensure a healthy margin for Luganda lookahead
-    size_t i = len - 4;    // Back off by max Luganda onset/vowel length
+    if (len < 1) return 0; // Use 1-byte margin to avoid truncating complete UTF-8 chars
+    size_t i = len - 1;    // Back off by 1 byte to avoid splitting UTF-8 sequences
     while (i > 0 && (buf[i] & 0xC0) == 0x80) i--;
     return i;
 }
@@ -196,6 +196,15 @@ TokenizerStatus stream_tokenizer_mem(StreamTokenizer *st,
         assert(st->tail <= STREAM_BUF_SIZE);
         st->buf[st->tail] = '\0';
         *bytes_consumed = to_copy;
+    }
+    
+    /* FIX: If the internal buffer is full and we consumed nothing, the caller
+     * must call stream_tokenizer_process() to drain output before retrying.
+     * Without this return, is_final would never be set when space==0, and a
+     * caller draining a large buffer would loop forever on the last chunk. */
+    if (to_copy == 0 && len > 0) {
+        /* Signal MORE so the caller drains the output buffer, then retries. */
+        return TOKENIZER_MORE;
     }
     
     if (is_final && *bytes_consumed == len) st->eof = true;
