@@ -434,6 +434,25 @@ int tokenizer_encode_beam(const Tokenizer *t, const char *text,
 int tokenizer_encode_lattice(const Tokenizer *t, const char *text,
                              uint32_t *out, uint32_t out_cap);
 
+/* Lattice context for thread-safe heap allocation (prevents stack overflow in worker pools) */
+#define LATTICE_CTX_BEAM_WIDTH 64
+#define LATTICE_CTX_MAX_POS 512
+
+typedef struct {
+  uint32_t arena_indices[LATTICE_CTX_BEAM_WIDTH];
+  uint32_t count;
+} LatticeCtxBeamQueue;
+
+typedef struct {
+  void *arena_buffer;  /* Opaque pointer to LatticeNode array */
+  uint32_t arena_capacity;
+  LatticeCtxBeamQueue columns[LATTICE_CTX_MAX_POS + 1];
+  volatile uint8_t is_locked;  /* Re-entrancy safety latch (volatile prevents register caching) */
+} TokenizerLatticeContext;
+
+TokenizerLatticeContext *tokenizer_lattice_context_create(void);
+void tokenizer_lattice_context_destroy(TokenizerLatticeContext *ctx);
+
 #if USE_FUSED
 int tokenizer_encode_fused(const Tokenizer *t, const char *text,
                            uint32_t *out, uint32_t out_cap);

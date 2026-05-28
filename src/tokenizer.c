@@ -1389,6 +1389,51 @@ int tokenizer_encode(const Tokenizer *t, const char *text, uint32_t *out,
  * Arena-backed beam search engine for constraint-aware tokenization
  * ========================================================= */
 
+/* Platform-agnostic Thread-Local Storage configuration */
+#if __STDC_VERSION__ >= 201112L && !defined(__STDC_NO_THREADS__)
+    #include <threads.h>
+    #define LATTICE_TLS thread_local
+    #define LATTICE_HAS_TLS 1
+#elif defined(__GNUC__) || defined(__clang__) || defined(_MSC_VER)
+    #if defined(_MSC_VER)
+        #define LATTICE_TLS __declspec(thread)
+    #else
+        #define LATTICE_TLS __thread
+    #endif
+    #define LATTICE_HAS_TLS 1
+#else
+    #define LATTICE_HAS_TLS 0
+#endif
+
+/* POSIX thread-specific key for automatic cleanup on thread exit */
+#if defined(__linux__) || defined(__APPLE__)
+#include <pthread.h>
+static pthread_key_t lattice_lazy_key;
+static pthread_once_t lattice_key_once = PTHREAD_ONCE_INIT;
+static bool lattice_key_created = false;
+
+static void destroy_lattice_tls_ctx(void *ptr) {
+    tokenizer_lattice_context_destroy((TokenizerLatticeContext *)ptr);
+}
+
+static void make_lattice_key(void) {
+    if (pthread_key_create(&lattice_lazy_key, destroy_lattice_tls_ctx) == 0) {
+        lattice_key_created = true;
+    }
+}
+
+/* Library destructor for safe dlclose handling */
+__attribute__((destructor)) static void tokenizer_library_unload(void) {
+    if (lattice_key_created) {
+        pthread_key_delete(lattice_lazy_key);
+        lattice_key_created = false;
+    }
+}
+#define LATTICE_HAS_POSIX_TLS 1
+#else
+#define LATTICE_HAS_POSIX_TLS 0
+#endif
+
 #define LATTICE_BEAM_WIDTH 64
 #define LATTICE_MAX_POS 512
 
@@ -1404,13 +1449,36 @@ typedef struct {
   uint32_t parent_arena_idx;
 } LatticeNode;
 
+/* Lattice context lifecycle functions */
+TokenizerLatticeContext *tokenizer_lattice_context_create(void) {
+  TokenizerLatticeContext *ctx = malloc(sizeof(TokenizerLatticeContext));
+  if (!ctx) return NULL;
+
+  ctx->arena_capacity = (LATTICE_MAX_POS + 1) * LATTICE_BEAM_WIDTH;
+  ctx->arena_buffer = malloc(ctx->arena_capacity * sizeof(LatticeNode));
+  if (!ctx->arena_buffer) {
+    free(ctx);
+    return NULL;
+  }
+
+  ctx->is_locked = 0;  /* Initialize re-entrancy safety latch */
+  return ctx;
+}
+
+void tokenizer_lattice_context_destroy(TokenizerLatticeContext *ctx) {
+  if (ctx) {
+    free(ctx->arena_buffer);
+    free(ctx);
+  }
+}
+
 typedef struct {
   uint32_t arena_indices[LATTICE_BEAM_WIDTH];
   uint32_t count;
 } LatticeBeamQueue;
 
 typedef struct {
-  LatticeBeamQueue columns[LATTICE_MAX_POS + 1];
+  LatticeCtxBeamQueue columns[LATTICE_MAX_POS + 1];
   LatticeNode *arena_buffer;
   uint32_t arena_count;
   uint32_t arena_capacity;
@@ -1426,7 +1494,7 @@ static inline bool lattice_edge_valid(const LatticeConstraintState *state,
   return true;
 }
 
-static inline void lattice_heapify_up(LatticeBeamQueue *bq, const LatticeNode *arena, uint32_t idx) {
+static inline void lattice_heapify_up(LatticeCtxBeamQueue *bq, const LatticeNode *arena, uint32_t idx) {
   uint32_t child = idx;
   while (child > 0) {
     uint32_t parent = (child - 1) >> 1;
@@ -1439,7 +1507,7 @@ static inline void lattice_heapify_up(LatticeBeamQueue *bq, const LatticeNode *a
   }
 }
 
-static inline void lattice_heapify_down(LatticeBeamQueue *bq, const LatticeNode *arena, uint32_t idx) {
+static inline void lattice_heapify_down(LatticeCtxBeamQueue *bq, const LatticeNode *arena, uint32_t idx) {
   uint32_t parent = idx;
   while (true) {
     uint32_t left = (parent << 1) + 1;
@@ -1464,68 +1532,60 @@ static inline void lattice_heapify_down(LatticeBeamQueue *bq, const LatticeNode 
 static inline void lattice_beam_insert(PositionalLattice *lattice, uint32_t col_idx,
                                         const LatticeConstraintState *state,
                                         uint32_t token_id, uint32_t parent_idx) {
-  LatticeBeamQueue *bq = &lattice->columns[col_idx];
+  LatticeCtxBeamQueue *bq = &lattice->columns[col_idx];
   LatticeNode *arena = lattice->arena_buffer;
 
   if (bq->count == LATTICE_BEAM_WIDTH) {
     uint32_t min_idx = bq->arena_indices[0];
+    /* Skip if the incoming candidate path is worse than the current beam minimum */
     if (state->accumulated_score <= arena[min_idx].state.accumulated_score) return;
 
-    uint32_t target_idx = lattice->arena_count++;
-    if (__builtin_expect(target_idx >= lattice->arena_capacity, 0)) return;
-
-    lattice->arena_buffer[target_idx] = (LatticeNode){*state, token_id, parent_idx};
-    bq->arena_indices[0] = target_idx;
-    lattice_heapify_down(bq, lattice->arena_buffer, 0);
+    /* HARDENING FIX: Overwrite evicted element in-place to prevent arena leaks */
+    arena[min_idx] = (LatticeNode){*state, token_id, parent_idx};
+    lattice_heapify_down(bq, arena, 0);
   } else {
     uint32_t target_idx = lattice->arena_count++;
     if (__builtin_expect(target_idx >= lattice->arena_capacity, 0)) return;
 
     lattice->arena_buffer[target_idx] = (LatticeNode){*state, token_id, parent_idx};
     bq->arena_indices[bq->count] = target_idx;
-    lattice_heapify_up(bq, lattice->arena_buffer, bq->count);
+    lattice_heapify_up(bq, arena, bq->count);
     bq->count++;
   }
 }
 
-int tokenizer_encode_lattice(const Tokenizer *t, const char *text,
-                            uint32_t *out_tokens, uint32_t out_capacity) {
-  if (!t || !text || !out_tokens) return -1;
-  if (!t->louds || !t->louds->has_csr) return -1;
-  if (!t->token_features || !t->token_requires || !t->token_forbids) {
-    /* Fall back to greedy if constraints not available */
-    return tokenizer_encode(t, text, out_tokens, out_capacity);
-  }
+/* Internal lattice encoder core logic (no locking) */
+static int tokenizer_encode_lattice_core(const Tokenizer *t,
+                                        TokenizerLatticeContext *ctx,
+                                        const uint16_t *syls,
+                                        uint32_t n_syls,
+                                        uint32_t *out_tokens,
+                                        uint32_t out_capacity) {
+  LatticeNode *arena = (LatticeNode *)ctx->arena_buffer;
+  uint32_t arena_count = 0;
 
-  uint16_t syls[MAX_SYLLABLES];
-  int n_syls = syllabify_optimized(t, text, syls, MAX_SYLLABLES);
-  if (n_syls <= 0) return 0;
-  if ((uint32_t)n_syls > LATTICE_MAX_POS) {
-    /* Input too long for lattice - fall back to greedy */
-    return tokenizer_encode(t, text, out_tokens, out_capacity);
-  }
-
-  LatticeNode static_arena[4096];
-  PositionalLattice lattice = {
-    .arena_buffer = static_arena,
-    .arena_count = 0,
-    .arena_capacity = 4096
-  };
-  memset(lattice.columns, 0, sizeof(lattice.columns));
+  /* Zero out only the active beam columns for this sequence length */
+  memset(ctx->columns, 0, (n_syls + 1) * sizeof(LatticeCtxBeamQueue));
 
   LatticeConstraintState root_state = {0};
-  lattice_beam_insert(&lattice, 0, &root_state, 0xFFFFFFFF, 0xFFFFFFFF);
+  ctx->columns[0].arena_indices[0] = arena_count;
+  arena[arena_count++] = (LatticeNode){root_state, 0xFFFFFFFF, 0xFFFFFFFF};
+  ctx->columns[0].count = 1;
 
-  for (uint32_t pos = 0; pos < (uint32_t)n_syls; pos++) {
-    LatticeBeamQueue *current_beam = &lattice.columns[pos];
+  for (uint32_t pos = 0; pos < n_syls; pos++) {
+    LatticeCtxBeamQueue *current_beam = &ctx->columns[pos];
     if (current_beam->count == 0) continue;
 
     for (uint32_t b = 0; b < current_beam->count; b++) {
       uint32_t parent_idx = current_beam->arena_indices[b];
-      LatticeConstraintState parent_state = lattice.arena_buffer[parent_idx].state;
+      LatticeConstraintState parent_state = arena[parent_idx].state;
 
       uint32_t node = 0;
-      for (uint32_t i = pos; i < (uint32_t)n_syls; i++) {
+
+      /* HARDENING FIX: Cap lookahead sweep window to avoid O(N^2) adversarial spikes */
+      uint32_t max_lookahead = (n_syls - pos < MAX_SEQ_LEN) ? n_syls : pos + MAX_SEQ_LEN;
+
+      for (uint32_t i = pos; i < max_lookahead; i++) {
         uint32_t start = t->louds->row_ptr[node];
         uint32_t end = t->louds->row_ptr[node + 1];
         uint16_t target = syls[i];
@@ -1560,7 +1620,23 @@ int tokenizer_encode_lattice(const Tokenizer *t, const char *text,
                 .forbidden_features = parent_state.forbidden_features | forbids,
                 .accumulated_score = parent_state.accumulated_score + score
               };
-              lattice_beam_insert(&lattice, next_pos, &next_state, token_id, parent_idx);
+
+              /* In-place beam insert using context columns */
+              LatticeCtxBeamQueue *bq = &ctx->columns[next_pos];
+              if (bq->count == LATTICE_CTX_BEAM_WIDTH) {
+                uint32_t min_idx = bq->arena_indices[0];
+                if (next_state.accumulated_score <= arena[min_idx].state.accumulated_score) continue;
+
+                arena[min_idx] = (LatticeNode){next_state, token_id, parent_idx};
+                lattice_heapify_down(bq, arena, 0);
+              } else {
+                if (__builtin_expect(arena_count >= ctx->arena_capacity, 0)) return -1;
+                arena[arena_count] = (LatticeNode){next_state, token_id, parent_idx};
+                bq->arena_indices[bq->count] = arena_count;
+                lattice_heapify_up(bq, arena, bq->count);
+                bq->count++;
+                arena_count++;
+              }
             }
           }
         }
@@ -1568,38 +1644,127 @@ int tokenizer_encode_lattice(const Tokenizer *t, const char *text,
     }
   }
 
-  LatticeBeamQueue *final_beam = &lattice.columns[n_syls];
+  LatticeCtxBeamQueue *final_beam = &ctx->columns[n_syls];
   if (final_beam->count == 0) return -1;
 
   uint32_t best_node_idx = final_beam->arena_indices[0];
-  float max_score = lattice.arena_buffer[best_node_idx].state.accumulated_score;
+  float max_score = arena[best_node_idx].state.accumulated_score;
   for (uint32_t i = 1; i < final_beam->count; i++) {
     uint32_t idx = final_beam->arena_indices[i];
-    if (lattice.arena_buffer[idx].state.accumulated_score > max_score) {
-      max_score = lattice.arena_buffer[idx].state.accumulated_score;
+    if (arena[idx].state.accumulated_score > max_score) {
+      max_score = arena[idx].state.accumulated_score;
       best_node_idx = idx;
     }
   }
 
-  uint32_t rev_stack[LATTICE_MAX_POS];
+  uint32_t rev_stack[LATTICE_CTX_MAX_POS];
   uint32_t rev_count = 0;
   uint32_t curr = best_node_idx;
 
   while (curr != 0xFFFFFFFF) {
-    uint32_t tid = lattice.arena_buffer[curr].token_id;
+    uint32_t tid = arena[curr].token_id;
     if (tid != 0xFFFFFFFF) {
-      if (__builtin_expect(rev_count >= LATTICE_MAX_POS, 0)) return -1;
+      if (__builtin_expect(rev_count >= LATTICE_CTX_MAX_POS, 0)) return -1;
       rev_stack[rev_count++] = tid;
     }
-    curr = lattice.arena_buffer[curr].parent_arena_idx;
+    curr = arena[curr].parent_arena_idx;
   }
 
-  if (__builtin_expect(rev_count > out_capacity, 0)) return -1;
+  if (__builtin_expect(rev_count > out_capacity, 0)) {
+    ctx->is_locked = 0;
+    return -1;
+  }
   for (uint32_t i = 0; i < rev_count; i++) {
     out_tokens[i] = rev_stack[rev_count - 1 - i];
   }
 
+  ctx->is_locked = 0;
   return (int)rev_count;
+}
+
+/* Guard wrapper with memory barriers for re-entrancy safety */
+static int tokenizer_encode_lattice_with_context(const Tokenizer *t,
+                                                  TokenizerLatticeContext *ctx,
+                                                  const uint16_t *syls,
+                                                  uint32_t n_syls,
+                                                  uint32_t *out_tokens,
+                                                  uint32_t out_capacity) {
+  if (__builtin_expect(n_syls == 0 || n_syls > LATTICE_CTX_MAX_POS, 0)) return -1;
+  if (__builtin_expect(!ctx, 0)) return -1;
+
+  /* Re-entrancy safety check: abort if context is already locked */
+  if (__builtin_expect(ctx->is_locked, 0)) {
+    /* Fallback to greedy tokenization for nested calls or signal handlers */
+    return louds_tokenize(t->louds, syls, n_syls, out_tokens, out_capacity);
+  }
+
+  ctx->is_locked = 1;
+#if defined(__GNUC__) || defined(__clang__)
+  asm volatile("" ::: "memory"); /* Prevent compiler from reordering logic above this line */
+#endif
+
+  int result = tokenizer_encode_lattice_core(t, ctx, syls, n_syls, out_tokens, out_capacity);
+
+#if defined(__GNUC__) || defined(__clang__)
+  asm volatile("" ::: "memory"); /* Prevent compiler from reordering logic below this line */
+#endif
+  ctx->is_locked = 0;
+
+  return result;
+}
+
+/* Public API with backward-compatible TLS context (safe for worker pools) */
+int tokenizer_encode_lattice(const Tokenizer *t, const char *text,
+                            uint32_t *out_tokens, uint32_t out_capacity) {
+  if (!t || !text || !out_tokens) return -1;
+  if (!t->louds || !t->louds->has_csr) return -1;
+  if (!t->token_features || !t->token_requires || !t->token_forbids) {
+    /* Fall back to greedy if constraints not available */
+    return tokenizer_encode(t, text, out_tokens, out_capacity);
+  }
+
+  uint16_t syls[MAX_SYLLABLES];
+  int n_syls = syllabify_optimized(t, text, syls, MAX_SYLLABLES);
+  if (n_syls <= 0) return 0;
+  if ((uint32_t)n_syls > LATTICE_CTX_MAX_POS) {
+    /* Input too long for lattice - fall back to greedy */
+    return tokenizer_encode(t, text, out_tokens, out_capacity);
+  }
+
+  /* Resolve or lazily allocate the Thread-Local Context */
+#if LATTICE_HAS_POSIX_TLS
+  pthread_once(&lattice_key_once, make_lattice_key);
+  TokenizerLatticeContext *ctx = (TokenizerLatticeContext *)pthread_getspecific(lattice_lazy_key);
+  if (__builtin_expect(!ctx, 0)) {
+    ctx = tokenizer_lattice_context_create();
+    if (ctx) pthread_setspecific(lattice_lazy_key, ctx);
+  }
+#elif LATTICE_HAS_TLS
+  static LATTICE_TLS TokenizerLatticeContext *tl_ctx = NULL;
+  if (__builtin_expect(!tl_ctx, 0)) {
+    tl_ctx = tokenizer_lattice_context_create();
+  }
+  TokenizerLatticeContext *ctx = tl_ctx;
+#else
+  /* Fallback for legacy compilers lacking TLS support: heap allocation per-call
+   * is preferred over stack overflow vulnerability in production. */
+  TokenizerLatticeContext *ctx = tokenizer_lattice_context_create();
+#endif
+
+  if (__builtin_expect(!ctx, 0)) {
+    /* Ultimate fallback if memory allocation fails completely */
+    return tokenizer_encode(t, text, out_tokens, out_capacity);
+  }
+
+  int result = tokenizer_encode_lattice_with_context(t, ctx, syls, (uint32_t)n_syls,
+                                                     out_tokens, out_capacity);
+
+#if !LATTICE_HAS_POSIX_TLS && !LATTICE_HAS_TLS
+  /* Clean up the fallback allocation immediately if TLS is missing */
+  tokenizer_lattice_context_destroy(ctx);
+#endif
+
+  return result;
 }
 
 const char *tokenizer_decode(const Tokenizer *t, uint32_t token_id) {
