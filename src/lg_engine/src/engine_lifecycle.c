@@ -1358,11 +1358,11 @@ void le_add_edge(EngineContext* ctx, NodeID from, NodeID to) {
     if (!ctx || from == INVALID || to == INVALID) return;
     if (from >= MAX_NODES || to >= MAX_NODES) return;
 
-    /* C-2 FIX: Lock the source node stripe to guarantee atomic check-and-insert */
-    pthread_mutex_lock(&ctx->node_insert_locks[from & 1023]);
-
     /* CONC-1 FIX: Acquire read-lock to prevent concurrent epoch transitions */
     pthread_rwlock_rdlock(&ctx->epoch_rwlock);
+
+    /* C-2 FIX: Lock the source node stripe to guarantee atomic check-and-insert */
+    pthread_mutex_lock(&ctx->node_insert_locks[from & 1023]);
 
     /* Get SCC IDs for source and target nodes */
     SccID scc_from = atomic_load_explicit(&ctx->transient_nodes[from].scc_id, memory_order_acquire);
@@ -1416,13 +1416,13 @@ void le_add_edge(EngineContext* ctx, NodeID from, NodeID to) {
                     SymbolID sym_to = atomic_load_explicit(&ctx->scc_nodes[scc_to].symbol_id, memory_order_acquire);
 
                     if (sym_from != INVALID && sym_to != INVALID) {
-                        add_dawg_transition(ctx, sym_from, sym_to, 1.0f);
+                        add_dawg_transition_unlocked(ctx, sym_from, sym_to, 1.0f);
                     }
                 }
             }
 
-            pthread_rwlock_unlock(&ctx->epoch_rwlock);
             pthread_mutex_unlock(&ctx->node_insert_locks[from & 1023]);
+            pthread_rwlock_unlock(&ctx->epoch_rwlock);
             return;
         }
         /* CRITICAL FIX C-1: Use atomic_load for _Atomic EdgeID array access */
@@ -1455,8 +1455,8 @@ void le_add_edge(EngineContext* ctx, NodeID from, NodeID to) {
         /* Node/SCC is saturated. Drop this transient transition rather than
          * feeding the giant hairball. The edge can still be learned later
          * if repeated encounters push it through dedup on an existing slot. */
-        pthread_rwlock_unlock(&ctx->epoch_rwlock);
         pthread_mutex_unlock(&ctx->node_insert_locks[from & 1023]);
+        pthread_rwlock_unlock(&ctx->epoch_rwlock);
         return;
     }
     /* ================================================================ */
@@ -1470,8 +1470,8 @@ void le_add_edge(EngineContext* ctx, NodeID from, NodeID to) {
             warned = true;
         }
         atomic_fetch_sub(&ctx->edge_count, 1);  /* Rollback */
-        pthread_rwlock_unlock(&ctx->epoch_rwlock);
         pthread_mutex_unlock(&ctx->node_insert_locks[from & 1023]);
+        pthread_rwlock_unlock(&ctx->epoch_rwlock);
         return;
     }
 
@@ -1556,13 +1556,13 @@ void le_add_edge(EngineContext* ctx, NodeID from, NodeID to) {
             SymbolID sym_to = atomic_load_explicit(&ctx->scc_nodes[scc_to].symbol_id, memory_order_acquire);
 
             if (sym_from != INVALID && sym_to != INVALID) {
-                add_dawg_transition(ctx, sym_from, sym_to, 1.0f);
+                add_dawg_transition_unlocked(ctx, sym_from, sym_to, 1.0f);
             }
         }
     }
 
-    pthread_rwlock_unlock(&ctx->epoch_rwlock);
     pthread_mutex_unlock(&ctx->node_insert_locks[from & 1023]);
+    pthread_rwlock_unlock(&ctx->epoch_rwlock);
 }
 
 /**
@@ -3105,6 +3105,79 @@ void add_dawg_transition(EngineContext* ctx, SymbolID from, SymbolID to, float w
 
     atomic_fetch_add_explicit(&sym_from->transition_count, 1, memory_order_relaxed);
     pthread_mutex_unlock(&ctx->node_insert_locks[from & 1023]);
+}
+
+/**
+ * add_dawg_transition_unlocked - Add a transition to the DAWG without taking the stripe lock.
+ *
+ * Internal variant for callers that already hold the appropriate node_insert_locks stripe.
+ * This prevents self-deadlock when called from le_add_edge which already holds a stripe lock.
+ * The caller MUST hold node_insert_locks[from & 1023] before calling this function.
+ */
+static void add_dawg_transition_unlocked(EngineContext* ctx, SymbolID from, SymbolID to, float weight) {
+    if (!ctx || from >= MAX_SYMBOLS || to >= MAX_SYMBOLS) return;
+
+    /* NOTE: Caller must hold node_insert_locks[from & 1023] */
+
+    Symbol* sym_from = &ctx->dawg_nodes[from];
+    uint32_t t_idx = atomic_load_explicit(&sym_from->first_transition, memory_order_acquire);
+
+    /* Deduplication: update existing transition weight */
+    while (t_idx != INVALID && t_idx < MAX_DAWG_TRANSITIONS) {
+        DawgTransition* t = &ctx->dawg_transitions[t_idx];
+        if (atomic_load_explicit(&t->target, memory_order_acquire) == to) {
+            uint32_t old_bits = atomic_load_explicit(&t->weight, memory_order_acquire);
+            uint32_t new_bits;
+            /* L-1 FIX: Add spin timeout to prevent indefinite spinning */
+            int spin_count = 0;
+            const int SPIN_LIMIT = 10000;
+            do {
+                float old_w;
+                memcpy(&old_w, &old_bits, sizeof(float));
+                float new_w = old_w + weight;
+                memcpy(&new_bits, &new_w, sizeof(float));
+                if (++spin_count > SPIN_LIMIT) {
+                    fprintf(stderr, "WARNING: Spin timeout in add_dawg_transition_unlocked weight CAS\n");
+                    break;
+                }
+            } while (!atomic_compare_exchange_weak_explicit(
+                &t->weight, &old_bits, new_bits,
+                memory_order_release, memory_order_acquire));
+            return;
+        }
+        t_idx = atomic_load_explicit(&t->next, memory_order_acquire);
+    }
+
+    /* Allocate new transition from the pool */
+    uint32_t new_t_idx = atomic_fetch_add_explicit(&ctx->dawg_transition_count, 1, memory_order_relaxed);
+    if (new_t_idx >= MAX_DAWG_TRANSITIONS) {
+        return;
+    }
+
+    DawgTransition* new_t = &ctx->dawg_transitions[new_t_idx];
+    /* C-6 FIX: Replace atomic_init with atomic_store_explicit for correctness on both new and reused slots */
+    atomic_store_explicit(&new_t->target, to, memory_order_release);
+    uint32_t w_bits;
+    memcpy(&w_bits, &weight, sizeof(float));
+    atomic_store_explicit(&new_t->weight, w_bits, memory_order_release);
+
+    /* CAS loop for thread-safe list prepend */
+    uint32_t expected;
+    /* L-1 FIX: Add spin timeout to prevent indefinite spinning */
+    int spin_count = 0;
+    const int SPIN_LIMIT = 10000;
+    do {
+        expected = atomic_load_explicit(&sym_from->first_transition, memory_order_acquire);
+        atomic_store_explicit(&new_t->next, expected, memory_order_relaxed);
+        if (++spin_count > SPIN_LIMIT) {
+            fprintf(stderr, "WARNING: Spin timeout in add_dawg_transition_unlocked first_transition CAS\n");
+            break;
+        }
+    } while (!atomic_compare_exchange_weak_explicit(
+        &sym_from->first_transition, &expected, new_t_idx,
+        memory_order_release, memory_order_acquire));
+
+    atomic_fetch_add_explicit(&sym_from->transition_count, 1, memory_order_relaxed);
 }
 
 /**
