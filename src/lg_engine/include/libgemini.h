@@ -36,10 +36,11 @@ typedef uint32_t SymbolID;
 /* =========================== Beam Search Result =========================== */
 
 typedef struct {
-    SymbolID* sequence;     /* Caller must NOT free — use le_free_beam_results */
+    SymbolID* sequence;     /* Heap-allocated, caller must free via le_free_beam_results */
     uint32_t  length;
     float     log_prob;     /* Cumulative log-probability (base-e) */
     SymbolID  current;      /* Tip of the current beam path (sequence[length-1]) */
+    uint64_t  active_class_mask;  /* Rolling morphological constraints for noun-class agreement */
 } BeamState;
 
 /* =========================== Lifecycle ==================================== */

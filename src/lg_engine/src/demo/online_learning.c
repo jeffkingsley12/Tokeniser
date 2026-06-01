@@ -16,6 +16,8 @@
 #include <signal.h>    /* Required for sigaction and sig_atomic_t */
 #include <math.h>      /* Required for isfinite */
 #include <sys/select.h> /* Required for select() for non-blocking I/O */
+#include <sys/stat.h>  /* Required for mkdir */
+#include <sys/types.h> /* Required for mkdir */
 #include <errno.h>      /* Required for errno and EINTR */
 
 #define EPOCH_INTERVAL 100
@@ -97,25 +99,63 @@ static int compare_word_entries(const void *a, const void *b) {
 }
 
 static void save_word_frequencies(const char *filepath) {
-    if (unique_words_count == 0) return;
+    /* Create vocab directory if it doesn't exist */
+    char *dir_sep = strrchr(filepath, '/');
+    if (dir_sep) {
+        char dir_path[256];
+        size_t dir_len = dir_sep - filepath;
+        strncpy(dir_path, filepath, dir_len);
+        dir_path[dir_len] = '\0';
+        mkdir(dir_path, 0755);
+    }
 
-    WordEntry **arr = malloc(unique_words_count * sizeof(WordEntry *));
-    if (!arr) return;
+    /* F-6 FIX: Atomic isolation swap pattern.
+     * Snapshot the global word_buckets into a local copy and immediately zero
+     * the global table before any destructive operations. This prevents any
+     * concurrent access (signal handlers, future threading) from reading
+     * valid-looking pointers to freed data (use-after-free). */
+    WordEntry *local_buckets[HASH_SIZE_WORDS];
+    memcpy(local_buckets, word_buckets, sizeof(local_buckets));
+    memset(word_buckets, 0, sizeof(word_buckets));
+    unique_words_count = 0;
+
+    /* Count exact entries from the isolated snapshot */
+    uint32_t exact_count = 0;
+    for (uint32_t i = 0; i < HASH_SIZE_WORDS; i++) {
+        WordEntry *curr = local_buckets[i];
+        while (curr) { exact_count++; curr = curr->next; }
+    }
+    if (exact_count == 0) return;
+
+    WordEntry **arr = malloc(exact_count * sizeof(WordEntry *));
+    if (!arr) {
+        /* OOM: still need to free the isolated entries */
+        for (uint32_t i = 0; i < HASH_SIZE_WORDS; i++) {
+            WordEntry *entry = local_buckets[i];
+            while (entry) {
+                WordEntry *next = entry->next;
+                free(entry->word);
+                free(entry);
+                entry = next;
+            }
+        }
+        return;
+    }
 
     uint32_t idx = 0;
     for (uint32_t i = 0; i < HASH_SIZE_WORDS; i++) {
-        WordEntry *curr = word_buckets[i];
+        WordEntry *curr = local_buckets[i];
         while (curr) {
             arr[idx++] = curr;
             curr = curr->next;
         }
     }
 
-    qsort(arr, unique_words_count, sizeof(WordEntry *), compare_word_entries);
+    qsort(arr, exact_count, sizeof(WordEntry *), compare_word_entries);
 
     FILE *f = fopen(filepath, "w");
     if (f) {
-        uint32_t limit = unique_words_count < 100000 ? unique_words_count : 100000;
+        uint32_t limit = exact_count < 100000 ? exact_count : 100000;
         uint32_t words_written = 0;
         for (uint32_t i = 0; i < limit; i++) {
             if (arr[i]->freq >= 2) {
@@ -124,22 +164,17 @@ static void save_word_frequencies(const char *filepath) {
             }
         }
         fclose(f);
-        /* FIX: Report words_written (entries satisfying freq >= 2 that were
-         * actually flushed to disk), not `limit` which is the number of
-         * candidate entries examined.  Using `limit` overstated the count
-         * whenever many low-frequency (freq < 2) words were discarded. */
         printf("Word frequency vocabulary saved to %s (%u unique words saved).\n", filepath, words_written);
     } else {
         perror("Failed to open word_vocab.txt for writing");
     }
 
-    for (uint32_t i = 0; i < unique_words_count; i++) {
+    /* Free the isolated entries safely outside the global scope */
+    for (uint32_t i = 0; i < exact_count; i++) {
         free(arr[i]->word);
         free(arr[i]);
     }
     free(arr);
-    memset(word_buckets, 0, sizeof(word_buckets));
-    unique_words_count = 0;
 }
 
 static double get_time_sec(void) {
@@ -277,34 +312,13 @@ int main(int argc, char **argv) {
 
     printf("\nStarting continuous data ingestion stream...\n");
 
-    /* Loop breaks cleanly if signal changes g_keep_running or file reaches EOF
-     * Use select() with timeout to periodically check signal flag instead of
-     * blocking indefinitely on fgets() which ignores signal interruption. */
+    /* H-4 FIX: Replace select() busy-wait with usleep() for signal checking.
+     * select() on a regular file always returns immediately with data available,
+     * causing a tight busy-wait loop that consumes 100% CPU. */
     while (g_keep_running) {
-        /* Check if data is available to read with 100ms timeout */
-        fd_set read_fds;
-        struct timeval tv;
-        FD_ZERO(&read_fds);
-        FD_SET(fileno(f), &read_fds);
-        tv.tv_sec = 0;
-        tv.tv_usec = 100000; /* 100ms timeout */
+        /* Sleep briefly to allow signal handling and reduce CPU usage */
+        usleep(100000); /* 100ms sleep */
 
-        int select_result = select(fileno(f) + 1, &read_fds, NULL, NULL, &tv);
-        
-        if (select_result < 0) {
-            if (errno == EINTR) {
-                /* Interrupted by signal - check g_keep_running and continue */
-                continue;
-            }
-            perror("select() failed");
-            break;
-        }
-        
-        if (select_result == 0) {
-            /* Timeout - check signal flag and loop back */
-            continue;
-        }
-        
         /* Data available - read it */
         if (!fgets(line, sizeof(line), f)) {
             /* EOF or error */
@@ -358,7 +372,8 @@ int main(int argc, char **argv) {
 
             /* Net promotions this epoch: positive = new symbols, negative = more demotions than promotions */
             int64_t net_promoted = (int64_t)prom_after - (int64_t)prom_before;
-            uint32_t gross_promoted = syms_after - syms_before; /* High-water mark delta */
+            /* L-5 FIX: Use signed subtraction to prevent unsigned wrap when syms_before > syms_after */
+            int64_t gross_promoted = (int64_t)syms_after - (int64_t)syms_before; /* High-water mark delta */
 
             if (net_promoted == 0 && syms_after >= MAX_SYMBOLS) {
                 fprintf(stderr,
@@ -369,13 +384,15 @@ int main(int argc, char **argv) {
 
             double epoch_end = get_time_sec();
             uint32_t sccs_after = get_scc_count(ctx);
-            uint32_t active_symbols = (uint32_t)prom_after; /* total_promotions = net active symbols */
 
             printf("Epoch completed in %.3f seconds.\n", epoch_end - epoch_start);
             printf("SCCs: %u -> %u\n", sccs_before, sccs_after);
             printf("Symbols: net promoted this epoch: %" PRId64
-                   ", new slots: %u, active total: %u\n",
-                   net_promoted, gross_promoted, active_symbols);
+                   ", new slots: %" PRId64 ", allocated: %" PRIu32 "/%" PRIu32
+                   ", cumulative promotions: %" PRIu64 "\n",
+                   net_promoted, gross_promoted,
+                   syms_after, (uint32_t)MAX_SYMBOLS,
+                   prom_after);
 
             if (epoch_count % SNAPSHOT_INTERVAL == 0) {
                 printf("Saving cognitive snapshot to %s...\n", snapshot_path);
@@ -386,7 +403,7 @@ int main(int argc, char **argv) {
                 }
                 
                 char vocab_path[256];
-                snprintf(vocab_path, sizeof(vocab_path), "vocab_epoch_%u.txt", epoch_count);
+                snprintf(vocab_path, sizeof(vocab_path), "vocab/vocab_epoch_%u.txt", epoch_count);
                 printf("Flushing word frequency index to %s (%u unique words)...\n", vocab_path, unique_words_count);
                 save_word_frequencies(vocab_path);
             }
@@ -481,12 +498,18 @@ int main(int argc, char **argv) {
         strncpy(stem, base, sizeof(stem) - 1);
         char *dot = strrchr(stem, '.');
         if (dot) *dot = '\0';
-        snprintf(vocab_path, sizeof(vocab_path), "vocab_%s.txt", stem);
+        snprintf(vocab_path, sizeof(vocab_path), "vocab/vocab_%s.txt", stem);
     }
     save_word_frequencies(vocab_path);
 
+    fprintf(stderr, "[SHUTDOWN] Calling le_destroy\n");
     le_destroy(ctx);
-    tok_free(tok_handle);
+    fprintf(stderr, "[SHUTDOWN] le_destroy returned\n");
 
+    fprintf(stderr, "[SHUTDOWN] Calling tok_free\n");
+    tok_free(tok_handle);
+    fprintf(stderr, "[SHUTDOWN] tok_free returned\n");
+
+    fprintf(stderr, "[SHUTDOWN] Exiting main\n");
     return 0;
 }

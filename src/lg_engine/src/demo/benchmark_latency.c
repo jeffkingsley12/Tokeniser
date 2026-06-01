@@ -59,10 +59,9 @@ int main(int argc, char **argv) {
         Symbol *sym = &ctx->dawg_nodes[i];
         if (atomic_load(&sym->first_transition) == LE_INVALID) continue;
 
-        /* FIX: sym->original_scc is a SccID, not a NodeID. Using it directly
-         * as a NodeID indexes into ctx->nodes[] at an unrelated position and
-         * returns the wrong token. Use le_get_symbol_nodes() to obtain the
-         * SCC's actual representative node, then look up its token from there. */
+        /* FIX: Use le_get_symbol_nodes() to obtain the symbol's canonical node,
+         * then look up its token from there. This avoids the old bug where
+         * original_scc (a SccID) was incorrectly used as a NodeID. */
         NodeID member_buf[1];
         uint32_t mc = le_get_symbol_nodes(ctx, i, member_buf, 1);
         if (mc == 0) continue;

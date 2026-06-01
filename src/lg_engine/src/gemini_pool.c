@@ -23,26 +23,33 @@ Status: Production-grade with comprehensive error handling
 
 /**
  * Initialize the flat edge pool with an initial base capacity.
+ * HYPERGRAPH UPDATE: Allocates parallel arrays for immutable headers and mutable weights.
  */
 int edge_pool_init(EngineContext *ctx, uint32_t pool_size) {
   if (!ctx || pool_size == 0)
     return -1;
 
-  ctx->edge_pool.edges = (NodeID *)calloc(pool_size, sizeof(NodeID));
-  if (!ctx->edge_pool.edges) {
+  /* Allocate parallel arrays in cache-aligned step */
+  ctx->edge_pool.headers = (PackedEdgeHeader *)calloc(pool_size, sizeof(PackedEdgeHeader));
+  ctx->edge_pool.log_weights = (_Atomic uint16_t *)calloc(pool_size, sizeof(_Atomic uint16_t));
+
+  if (!ctx->edge_pool.headers || !ctx->edge_pool.log_weights) {
     fprintf(stderr,
-            "ERROR: Failed to allocate flat edge pool array of size %u\n",
+            "ERROR: Failed to allocate parallel relational edge pool blocks of size %u\n",
             pool_size);
+    free(ctx->edge_pool.headers);
+    free((void*)ctx->edge_pool.log_weights);
     return -1;
   }
 
   ctx->edge_pool.capacity = pool_size;
   atomic_store_explicit(&ctx->edge_pool.pool_ptr, 0, memory_order_relaxed);
+  atomic_store_explicit(&ctx->edge_pool.pool_utilization, 0, memory_order_relaxed);
 
   if (pthread_rwlock_init(&ctx->edge_pool.pool_lock, NULL) != 0) {
     fprintf(stderr, "ERROR: Failed to initialize edge pool rwlock\n");
-    free(ctx->edge_pool.edges);
-    ctx->edge_pool.edges = NULL;
+    free(ctx->edge_pool.headers);
+    free((void*)ctx->edge_pool.log_weights);
     return -1;
   }
 
@@ -79,22 +86,50 @@ static int edge_pool_expand_writelocked(EngineContext *ctx,
     new_capacity = needed + 1024;
   }
 
-  NodeID *new_edges =
-      (NodeID *)realloc(ctx->edge_pool.edges, new_capacity * sizeof(NodeID));
-  if (!new_edges) {
-    fprintf(stderr,
-            "CRITICAL OOM: Unable to expand edge pool from %u to %u items\n",
-            ctx->edge_pool.capacity, new_capacity);
+  /* F-2 FIX: Transaction pattern — snapshot original references for rollback.
+   * If the first realloc succeeds but the second fails, we must restore the
+   * engine to its exact prior state to prevent structural inconsistency. */
+  uint32_t old_capacity = ctx->edge_pool.capacity;
+  PackedEdgeHeader *old_headers = ctx->edge_pool.headers;
+
+  PackedEdgeHeader *new_headers =
+      (PackedEdgeHeader *)realloc(old_headers, new_capacity * sizeof(PackedEdgeHeader));
+  if (!new_headers) {
+    fprintf(stderr, "CRITICAL OOM: Cannot expand edge pool headers\n");
+    return -1;  /* Safe: no state has changed yet */
+  }
+  /* Commit headers tentatively */
+  ctx->edge_pool.headers = new_headers;
+
+  _Atomic uint16_t *old_weights = ctx->edge_pool.log_weights;
+  _Atomic uint16_t *new_weights =
+      (_Atomic uint16_t *)realloc((void*)old_weights, new_capacity * sizeof(_Atomic uint16_t));
+  if (!new_weights) {
+    fprintf(stderr, "CRITICAL OOM: Cannot expand edge pool log_weights\n");
+    /* TRANSACTION ROLLBACK: Attempt to shrink headers back to original size
+     * to restore consistent state. */
+    PackedEdgeHeader *revert_headers =
+        (PackedEdgeHeader *)realloc(ctx->edge_pool.headers, old_capacity * sizeof(PackedEdgeHeader));
+    if (revert_headers) {
+      ctx->edge_pool.headers = revert_headers;
+    }
+    /* If revert realloc also fails, headers is at new_capacity but capacity
+     * field still reflects old_capacity. This is safe: pool_ptr hasn't
+     * advanced, so no out-of-bounds access is possible. The extra memory
+     * is simply unused until the next successful expansion attempt. */
     return -1;
   }
 
-  /* Initialize the newly appended region to INVALID (0xFFFFFFFF) instead of 0
-   * to prevent treating uninitialized slots as valid edges to node 0 */
-  memset(new_edges + ctx->edge_pool.capacity, 0xFF,
-         (new_capacity - ctx->edge_pool.capacity) * sizeof(NodeID));
-
-  ctx->edge_pool.edges = new_edges;
+  /* Success commit: publish new capacities and references */
+  ctx->edge_pool.log_weights = new_weights;
   ctx->edge_pool.capacity = new_capacity;
+
+  /* Zero-initialize newly allocated space to prevent uninitialized reads */
+  uint32_t delta = new_capacity - old_capacity;
+  memset(ctx->edge_pool.headers + old_capacity, 0xFF,
+         delta * sizeof(PackedEdgeHeader));
+  memset((void*)(ctx->edge_pool.log_weights + old_capacity), 0,
+         delta * sizeof(_Atomic uint16_t));
   return 0;
 }
 
@@ -152,6 +187,21 @@ uint32_t edge_pool_allocate(EngineContext *ctx, uint32_t capacity) {
     return (uint32_t)-1;
   }
 
+  /* CRITICAL FIX: Re-evaluate capacity after expansion before blind fetch_add.
+   * If multiple threads failed the fast path and queued for the write lock,
+   * Thread A expands the pool and increments pool_ptr. Thread B then gets the lock,
+   * and if its capacity fits in the new leftover space, no expansion happens.
+   * Thread B must re-check if pool_ptr + capacity > capacity before incrementing
+   * to avoid writing out of bounds. */
+  uint32_t current_ptr = atomic_load_explicit(&ctx->edge_pool.pool_ptr, memory_order_relaxed);
+  if (current_ptr + capacity > ctx->edge_pool.capacity) {
+    /* Still not enough space after expansion - try expanding again */
+    if (edge_pool_expand_writelocked(ctx, capacity) != 0) {
+      pthread_rwlock_unlock(&ctx->edge_pool.pool_lock);
+      return (uint32_t)-1;
+    }
+  }
+
   /* We now hold the exclusive wrlock. No other thread can be in the fast path
    * or expanding the pool. A simple fetch_add is safe here. */
   uint32_t offset = atomic_fetch_add_explicit(&ctx->edge_pool.pool_ptr,
@@ -164,15 +214,20 @@ uint32_t edge_pool_allocate(EngineContext *ctx, uint32_t capacity) {
 /**
  * Shut down the flat edge pool and free all associated memory maps/heap
  * buffers.
+ * HYPERGRAPH UPDATE: Frees both parallel arrays (headers and log_weights).
  */
 void edge_pool_destroy(EngineContext *ctx) {
   if (!ctx)
     return;
 
   pthread_rwlock_wrlock(&ctx->edge_pool.pool_lock);
-  if (ctx->edge_pool.edges) {
-    free(ctx->edge_pool.edges);
-    ctx->edge_pool.edges = NULL;
+  if (ctx->edge_pool.headers) {
+    free(ctx->edge_pool.headers);
+    ctx->edge_pool.headers = NULL;
+  }
+  if (ctx->edge_pool.log_weights) {
+    free((void*)ctx->edge_pool.log_weights);
+    ctx->edge_pool.log_weights = NULL;
   }
   ctx->edge_pool.capacity = 0;
   atomic_store_explicit(&ctx->edge_pool.pool_ptr, 0, memory_order_relaxed);
@@ -183,10 +238,10 @@ void edge_pool_destroy(EngineContext *ctx) {
 
 /**
  * Report flat edge pool statistics for tracing and diagnostics.
+ * HYPERGRAPH UPDATE: Reports parallel array layout metrics.
  */
 void edge_pool_stats(EngineContext *ctx) {
-  if (!ctx)
-    return;
+  if (!ctx) return;
 
   pthread_rwlock_rdlock(&ctx->edge_pool.pool_lock);
   uint32_t total_capacity = ctx->edge_pool.capacity;
@@ -197,12 +252,12 @@ void edge_pool_stats(EngineContext *ctx) {
   float utilization =
       (total_capacity > 0) ? (100.0f * total_used / total_capacity) : 0.0f;
 
-  fprintf(stdout, "=== Gemini Edge Pool Status ===\n");
-  fprintf(stdout, "  Layout Strategy : Flat mmap-relocatable array\n");
+  fprintf(stdout, "=== Lg Engine Relational Edge Pool Status ===\n");
+  fprintf(stdout, "  Layout Strategy : Parallel array (headers + log_weights)\n");
   fprintf(stdout, "  Total Capacity  : %u entries\n", total_capacity);
   fprintf(stdout, "  Allocated Edges : %u entries\n", total_used);
   fprintf(stdout, "  Pool Utilization: %.2f%%\n", utilization);
-  fprintf(stdout, "===============================\n");
+  fprintf(stdout, "=============================================\n");
 }
 
 /**
@@ -290,6 +345,26 @@ int le_add_incoming_edge_pooled(EngineContext *ctx, NodeID target,
     return -1;
   }
 
+  /* CRITICAL FIX: Wrap duplicate check with read lock to prevent use-after-free during realloc */
+  pthread_rwlock_rdlock(&ctx->edge_pool.pool_lock);
+
+  /* Fast duplicate check - scan current span */
+  uint32_t current_count =
+      atomic_load_explicit(&span->count, memory_order_relaxed);
+  uint32_t offset = atomic_load_explicit(&span->pool_offset, memory_order_relaxed);
+  
+  /* Only check for duplicates if span has edges */
+  if (current_count > 0) {
+    for (uint32_t i = 0; i < current_count; i++) {
+      PackedEdgeHeader hdr = ctx->edge_pool.headers[offset + i];
+      NodeID dst = UNPACK_EDGE_DST(hdr);
+      if (dst == source) {
+        pthread_rwlock_unlock(&ctx->edge_pool.pool_lock);
+        return 0;  /* Edge already exists, silently succeed */
+      }
+    }
+  }
+
   /* ── CASE 1: Fast path — space available ─────────────────────────────────
    *
    * FIX H-1: The previous implementation used CAS to set span->count = idx+1
@@ -312,12 +387,10 @@ int le_add_incoming_edge_pooled(EngineContext *ctx, NodeID target,
    * slow-path realloc (which requires wrlock) cannot move
    * ctx->edge_pool.edges between our datum write and our CAS.
    */
-  pthread_rwlock_rdlock(&ctx->edge_pool.pool_lock);
 
-  /* Re-read capacity while holding the lock */
+  /* Re-read capacity while holding the lock (already acquired above) */
   capacity = atomic_load_explicit(&span->capacity, memory_order_acquire);
-  uint32_t current_count =
-      atomic_load_explicit(&span->count, memory_order_acquire);
+  current_count = atomic_load_explicit(&span->count, memory_order_acquire);
 
   if (current_count < capacity) {
     uint32_t idx;
@@ -356,9 +429,11 @@ int le_add_incoming_edge_pooled(EngineContext *ctx, NodeID target,
        * that acquire-loads count > idx is guaranteed to see the datum. */
       uint32_t offset =
           atomic_load_explicit(&span->pool_offset, memory_order_relaxed);
-      atomic_store_explicit(
-          (_Atomic NodeID *)&ctx->edge_pool.edges[offset + idx], source,
-          memory_order_release);
+      /* HYPERGRAPH: Write header (immutable) and log_weight (mutable) separately */
+      PackedEdgeHeader header = PACK_EDGE_HEADER(source, REL_NONE);
+      ctx->edge_pool.headers[offset + idx] = header;
+      uint16_t initial_q = le_pack_weight_log(1.0f); /* Pack 1.0 to log-quantized space */
+      atomic_store_explicit(&ctx->edge_pool.log_weights[offset + idx], initial_q, memory_order_release);
       pthread_rwlock_unlock(&ctx->edge_pool.pool_lock);
       return 0;
     }
@@ -380,12 +455,15 @@ int le_add_incoming_edge_pooled(EngineContext *ctx, NodeID target,
   uint32_t old_capacity =
       atomic_load_explicit(&span->capacity, memory_order_acquire);
   current_count = atomic_load_explicit(&span->count, memory_order_acquire);
+  uint32_t old_offset =
+      atomic_load_explicit(&span->pool_offset, memory_order_acquire);
 
   if (current_count < old_capacity) {
     /* Span was extended by a competing thread while we waited for wrlock */
-    uint32_t old_offset =
-        atomic_load_explicit(&span->pool_offset, memory_order_acquire);
-    ctx->edge_pool.edges[old_offset + current_count] = source;
+    PackedEdgeHeader header = PACK_EDGE_HEADER(source, REL_NONE);
+    ctx->edge_pool.headers[old_offset + current_count] = header;
+    uint16_t initial_q = le_pack_weight_log(1.0f); /* Pack 1.0 to log-quantized space */
+    atomic_store_explicit(&ctx->edge_pool.log_weights[old_offset + current_count], initial_q, memory_order_release);
     atomic_store_explicit(&span->count, current_count + 1,
                           memory_order_release);
     pthread_rwlock_unlock(&ctx->edge_pool.pool_lock);
@@ -394,7 +472,8 @@ int le_add_incoming_edge_pooled(EngineContext *ctx, NodeID target,
 
   /* Compute new capacity with 1.5x growth, guarding against overflow */
   uint32_t new_capacity;
-  if (old_capacity > UINT32_MAX / 3 * 2) {
+  /* INT-1 FIX: Check if multiplying by 3 will overflow before doing the multiplication */
+  if (old_capacity > UINT32_MAX / 3) {
     new_capacity = old_capacity + 1024;
   } else {
     new_capacity = (old_capacity * 3) / 2;
@@ -402,11 +481,13 @@ int le_add_incoming_edge_pooled(EngineContext *ctx, NodeID target,
   if (new_capacity <= old_capacity)
     new_capacity = old_capacity + 1024;
 
-  /* FIX: Remove the legacy MAX_IN_EDGES slab cap. The only theoretical bound
-   * for a single node's dynamic in-degree is the global MAX_EDGES. */
-  if (new_capacity > MAX_EDGES) {
-    fprintf(stderr, "ERROR: Node %u edge count exceeds global MAX_EDGES (%u)\n",
-            target, MAX_EDGES);
+  /* Per-node edge span limit: allow up to 1% of global MAX_EDGES per node
+   * to accommodate legitimate hub nodes while preventing single-node DoS.
+   * This scales with the global budget rather than using a fixed constant. */
+#define MAX_NODE_EDGE_SPAN (MAX_EDGES / 100)
+  if (new_capacity > MAX_NODE_EDGE_SPAN) {
+    fprintf(stderr, "ERROR: Node %u edge span exceeds per-node limit (%u, 1%% of global)\n",
+            target, MAX_NODE_EDGE_SPAN);
     pthread_rwlock_unlock(&ctx->edge_pool.pool_lock);
     return -12;
   }
@@ -424,21 +505,48 @@ int le_add_incoming_edge_pooled(EngineContext *ctx, NodeID target,
       &ctx->edge_pool.pool_ptr, new_capacity, memory_order_relaxed);
 
   /* Copy valid existing edges into the new region, compacting out INVALID slots
+   * HYPERGRAPH: Copy both headers and log_weights in lockstep
    */
   uint32_t valid_count = 0;
   if (current_count > 0) {
-    uint32_t old_offset =
-        atomic_load_explicit(&span->pool_offset, memory_order_acquire);
+    /* FIX: Use outer `old_offset` (loaded above under the write lock).
+     * The previous code re-declared `uint32_t old_offset` here, shadowing
+     * the already-loaded outer variable.  Both reads produce the same value
+     * (pool_offset hasn't been touched since we acquired the write lock), but
+     * the shadow makes the code hard to audit and was flagged by -Wshadow. */
     for (uint32_t i = 0; i < current_count; i++) {
-      NodeID edge = ctx->edge_pool.edges[old_offset + i];
-      if (edge != INVALID) {
-        ctx->edge_pool.edges[new_offset + valid_count++] = edge;
+      PackedEdgeHeader hdr = ctx->edge_pool.headers[old_offset + i];
+      NodeID dst = UNPACK_EDGE_DST(hdr);
+      if (dst != INVALID) {
+        uint16_t old_q = atomic_load_explicit(&ctx->edge_pool.log_weights[old_offset + i], memory_order_relaxed);
+        ctx->edge_pool.headers[new_offset + valid_count] = hdr;
+        atomic_store_explicit(&ctx->edge_pool.log_weights[new_offset + valid_count], old_q, memory_order_relaxed);
+        valid_count++;
       }
     }
   }
 
+  /* HIGH FIX H-3: Check for duplicate before appending in slow path.
+   * The fast path checks duplicates, but the slow path (realloc) did not.
+   * This could create duplicate edges when the span is expanded. */
+  for (uint32_t i = 0; i < valid_count; i++) {
+    PackedEdgeHeader hdr = ctx->edge_pool.headers[new_offset + i];
+    NodeID dst = UNPACK_EDGE_DST(hdr);
+    if (dst == source) {
+      /* Duplicate found - just publish the compacted span without adding the edge */
+      atomic_store_explicit(&span->pool_offset, new_offset, memory_order_release);
+      atomic_store_explicit(&span->capacity, new_capacity, memory_order_release);
+      atomic_store_explicit(&span->count, valid_count, memory_order_release);
+      pthread_rwlock_unlock(&ctx->edge_pool.pool_lock);
+      return 0;
+    }
+  }
+
   /* Append new edge and publish the updated descriptor atomically */
-  ctx->edge_pool.edges[new_offset + valid_count] = source;
+  PackedEdgeHeader new_header = PACK_EDGE_HEADER(source, REL_NONE);
+  ctx->edge_pool.headers[new_offset + valid_count] = new_header;
+  uint16_t initial_q = le_pack_weight_log(1.0f); /* Pack 1.0 to log-quantized space */
+  atomic_store_explicit(&ctx->edge_pool.log_weights[new_offset + valid_count], initial_q, memory_order_release);
   current_count = valid_count + 1;
 
   atomic_store_explicit(&span->pool_offset, new_offset, memory_order_release);

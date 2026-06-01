@@ -151,31 +151,46 @@ const char *tok_decode(int handle, uint32_t id) {
 /* ── tok_free ─────────────────────────────────────────────────────────────── */
 
 void tok_free(int handle) {
-    if (handle < 0) return;
+    fprintf(stderr, "[TOK_FREE] handle=%d\n", handle);
+    if (handle < 0) {
+        fprintf(stderr, "[TOK_FREE] handle < 0, returning\n");
+        return;
+    }
     int slot = handle_slot(handle);
-    if (slot < 0 || slot >= MAX_HANDLES) return;
+    if (slot < 0 || slot >= MAX_HANDLES) {
+        fprintf(stderr, "[TOK_FREE] slot %d out of bounds, returning\n", slot);
+        return;
+    }
 
+    fprintf(stderr, "[TOK_FREE] slot=%d, locking g_lock\n", slot);
     pthread_mutex_lock(&g_lock);
     /* Validate generation so double-free is a no-op. */
     unsigned expected_gen = handle_gen(handle);
     unsigned current_gen  = atomic_load_explicit(
                                 &g_slots[slot].generation, memory_order_relaxed);
     if (current_gen != expected_gen) {
+        fprintf(stderr, "[TOK_FREE] generation mismatch (expected %u, got %u), returning\n",
+                expected_gen, current_gen);
         pthread_mutex_unlock(&g_lock);
         return;  /* already freed or never allocated */
     }
     MmapTokenizer *mt = atomic_load_explicit(&g_slots[slot].ptr, memory_order_relaxed);
-    /* Bump generation BEFORE releasing pointer so new readers see an invalid gen. */
+    fprintf(stderr, "[TOK_FREE] mt=%p\n", (void*)mt);
+    
+    /* CRITICAL FIX: Poison handle EARLY to prevent double free */
     atomic_fetch_add_explicit(&g_slots[slot].generation, 1u, memory_order_release);
     atomic_store_explicit(&g_slots[slot].ptr, NULL, memory_order_release);
     pthread_mutex_unlock(&g_lock);
+    fprintf(stderr, "[TOK_FREE] unlocked, poisoned handle, draining readers\n");
 
     /* Drain active readers safely before tearing down memory */
     while (atomic_load_explicit(&g_slots[slot].active_readers, memory_order_acquire) > 0) {
         sched_yield();
     }
+    fprintf(stderr, "[TOK_FREE] readers drained, calling tokenizer_destroy_mmap\n");
 
     if (mt) tokenizer_destroy_mmap(mt);
+    fprintf(stderr, "[TOK_FREE] complete\n");
 }
 
 /* ── Metrics Accessors ────────────────────────────────────────────────────── */

@@ -1,0 +1,65 @@
+{
+  "vocab_size": 65536,
+  "rules": [
+    {
+      "candidate_token": 1234,
+      "context_token": 5678,
+      "modifier": 2.0,
+      "rule_mask": 0x8
+    },
+    {
+      "candidate_token": 1234,
+      "context_token": 5679,
+      "modifier": 1.5,
+      "rule_mask": 0x0
+    },
+    {
+      "candidate_token": 2345,
+      "context_token": 6789,
+      "modifier": 0.5,
+      "rule_mask": 0x10
+    },
+    {
+      "candidate_token": 3456,
+      "context_token": 7890,
+      "modifier": 3.0,
+      "rule_mask": 0x20
+    },
+    {
+      "candidate_token": 4567,
+      "context_token": 8901,
+      "modifier": 0.1,
+      "rule_mask": 0x40
+    },
+    {
+      "candidate_token": 5678,
+      "context_token": 9012,
+      "modifier": 1.2,
+      "rule_mask": 0x0
+    },
+    {
+      "candidate_token": 6789,
+      "context_token": 1234,
+      "modifier": 0.8,
+      "rule_mask": 0x80
+    },
+    {
+      "candidate_token": 7890,
+      "context_token": 2345,
+      "modifier": 1.8,
+      "rule_mask": 0x100
+    },
+    {
+      "candidate_token": 8901,
+      "context_token": 3456,
+      "modifier": 0.3,
+      "rule_mask": 0x0
+    },
+    {
+      "candidate_token": 9012,
+      "context_token": 4567,
+      "modifier": 2.5,
+      "rule_mask": 0x200
+    }
+  ]
+}

@@ -4,8 +4,8 @@
 
 #include "libgemini.h"
 #include "tokenizer_api.h"
-#include "gemini_internal.h"
-#include "../bridge_engine.h"
+#include "../include/gemini_internal.h"
+#include "../include/bridge_engine.h"
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
@@ -76,8 +76,8 @@ void disable_raw_mode(void) {
 
 /*
  * Signal handler for SIGINT / SIGTERM: restore the terminal before exit so
- * the shell is not left in raw mode.  Calls the async-signal-safe subset:
- * only write(), _exit() — no stdio, no free().
+ * the shell is not left in raw mode.  These signals are delivered synchronously
+ * in response to user action, making tcsetattr practically safe here.
  */
 static void sig_handler(int sig) {
     /* Restore terminal synchronously — tcsetattr is async-signal-safe on Linux */
@@ -86,6 +86,26 @@ static void sig_handler(int sig) {
      * correct exit status (e.g. 130 for SIGINT). */
     signal(sig, SIG_DFL);
     raise(sig);
+}
+
+/*
+ * F-3 FIX: Async-signal-safe crash handler for SIGSEGV, SIGABRT, SIGBUS, SIGFPE.
+ *
+ * The previous implementation called tcsetattr() inside crash handlers, which
+ * triggers undefined behavior: tcsetattr requires standard library locks that
+ * may be held by the faulting thread, potentially deadlocking the process and
+ * preventing core dump generation.
+ *
+ * This handler uses only write() and _exit(), both guaranteed async-signal-safe
+ * by POSIX. Terminal restoration is handled by atexit(disable_raw_mode) which
+ * runs on normal exit paths.
+ */
+static void crash_signal_handler(int sig) {
+    const char *msg = "\n[FATAL] Gemini Engine: unrecoverable fault. Terminating.\n";
+    /* H-5 FIX: Correct byte count - string is 58 bytes (1 newline + 56 text + 1 newline) */
+    (void)write(STDERR_FILENO, msg, 58);
+    (void)sig;
+    _exit(EXIT_FAILURE);
 }
 
 void enable_raw_mode(void) {
@@ -106,6 +126,20 @@ void enable_raw_mode(void) {
     /* Install signal handlers so Ctrl+C / kill restores the terminal */
     signal(SIGINT,  sig_handler);
     signal(SIGTERM, sig_handler);
+
+    /* F-3 FIX: Use sigaction with SA_RESETHAND for crash signals.
+     * SA_RESETHAND prevents handler loops: after the first invocation,
+     * the signal disposition resets to SIG_DFL, allowing core dump generation
+     * on re-raise. Only async-signal-safe calls are used in the handler. */
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = crash_signal_handler;
+    sa.sa_flags = SA_RESETHAND;
+
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGBUS,  &sa, NULL);
+    sigaction(SIGFPE,  &sa, NULL);
 
     struct termios raw = orig_termios;
     raw.c_lflag &= ~(ECHO | ICANON);
@@ -147,9 +181,16 @@ void get_context_and_prefix(const char *buffer, char *context_word, char *prefix
         }
         int word_start = prev_space + 1;
         int word_len = last_space - word_start;
-        if (word_len >= 255) word_len = 255;
-        strncpy(context_word, buffer + word_start, (size_t)word_len);
-        context_word[word_len] = '\0';
+        /* CRITICAL FIX: Check for negative word_len (multiple consecutive spaces)
+         * If word_len <= 0, casting to size_t makes it a huge positive integer,
+         * causing strncpy to segfault by reading past buffer bounds. */
+        if (word_len <= 0) {
+            context_word[0] = '\0';
+        } else {
+            if (word_len >= 255) word_len = 255;
+            strncpy(context_word, buffer + word_start, (size_t)word_len);
+            context_word[word_len] = '\0';
+        }
         
         /* HIGH FIX: same overflow risk as above */
         snprintf(prefix, 256, "%s", buffer + last_space + 1);
@@ -158,12 +199,13 @@ void get_context_and_prefix(const char *buffer, char *context_word, char *prefix
 
 int main(int argc, char **argv) {
     if (argc < 3) {
-        printf("Usage: %s <engine_model.bin> <tokenizer_model.bin>\n", argv[0]);
+        printf("Usage: %s <engine_model.bin> <tokenizer_model.bin> [vocab_path.txt]\n", argv[0]);
         return 1;
     }
 
     const char *model_path = argv[1];
     const char *tok_path = argv[2];
+    const char *vocab_path = (argc >= 4) ? argv[3] : "vocab/word_vocab.txt";
 
     printf("Loading Gemini Engine...\n");
     EngineContext *ctx = le_load_mmap(model_path, false);
@@ -180,7 +222,8 @@ int main(int argc, char **argv) {
         le_unload_mmap(ctx);
         return 1;
     }
-    load_word_vocab("word_vocab.txt");
+    /* L-4 FIX: Allow custom vocab path via command-line argument */
+    load_word_vocab(vocab_path);
 
     printf("\n=== Promoted DAWG Symbols ===\n");
     uint32_t sym_cnt = get_symbol_count(ctx);
@@ -207,65 +250,72 @@ int main(int argc, char **argv) {
             printf("Symbol index %u exceeds MAX_SYMBOLS - breaking loop\n", i);
             break;
         }
-        
+
         Symbol *sym = &ctx->dawg_nodes[i];
-        
-        /* CRITICAL FIX: Validate symbol structure before accessing fields */
-        if (sym->original_scc == INVALID || sym->original_scc == 0xFFFFFFFF) {
-            printf("Symbol %u has invalid original_scc (0x%x) - skipping\n", i, sym->original_scc);
+
+        /* CRITICAL FIX: Validate canonical node before accessing fields */
+        NodeID canonical_node = sym->canonical_node;
+        if (canonical_node == INVALID || canonical_node >= MAX_NODES) {
+            printf("Symbol %u has invalid canonical_node (0x%x) - skipping\n", i, canonical_node);
             continue;
         }
-        
-        /* CRITICAL FIX: This bounds check MUST happen before le_get_symbol_nodes */
-        if (sym->original_scc >= MAX_SCCS) {
-            printf("Symbol %u (original SCC: INVALID - skipping)\n", i);
+
+        /* Get current SCC from canonical node */
+        SccID current_scc = atomic_load_explicit(&ctx->transient_nodes[canonical_node].scc_id, memory_order_acquire);
+        if (current_scc == INVALID || current_scc >= MAX_SCCS) {
+            printf("Symbol %u (canonical node: %u has invalid SCC - skipping)\n", i, canonical_node);
             continue;
         }
 
         /* CRITICAL FIX: Also check against actual SCC count to prevent accessing unallocated SCCs */
         uint32_t scc_cnt = atomic_load(&ctx->scc_count);
-        if (sym->original_scc >= scc_cnt) {
-            printf("Symbol %u (original SCC: %u >= scc_count %u - skipping)\n", i, sym->original_scc, scc_cnt);
+        if (current_scc >= scc_cnt) {
+            printf("Symbol %u (current SCC: %u >= scc_count %u - skipping)\n", i, current_scc, scc_cnt);
             continue;
         }
 
         NodeID member_buf[128];
         uint32_t mc = le_get_symbol_nodes(ctx, i, member_buf, 128);
-        
+
         /* CRITICAL FIX: le_get_symbol_nodes returns 0 for invalid SCC - skip access */
         if (mc == 0) {
-            printf("Symbol %u (original SCC: %u - le_get_symbol_nodes returned 0, skipping)\n", i, sym->original_scc);
+            printf("Symbol %u (current SCC: %u - le_get_symbol_nodes returned 0, skipping)\n", i, current_scc);
             continue;
         }
-        
-        SccNode *scc = &ctx->scc_nodes[sym->original_scc];
-        
+
+        SccNode *scc = &ctx->scc_nodes[current_scc];
+
         /* CRITICAL FIX: Validate SCC structure before accessing fields */
         if (atomic_load_explicit(&scc->head, memory_order_acquire) == INVALID && atomic_load_explicit(&scc->member_count, memory_order_acquire) == 0) {
-            printf("Symbol %u (original SCC: %u - SCC appears uninitialized, skipping)\n", i, sym->original_scc);
+            printf("Symbol %u (current SCC: %u - SCC appears uninitialized, skipping)\n", i, current_scc);
             continue;
         }
-        
+
         /* CRITICAL FIX: Validate SCC fields are reasonable before printing */
         float coherence = scc_load_coherence(scc);
         float avg_entropy = scc_load_avg_entropy(scc);
         if (!isfinite(coherence) || !isfinite(avg_entropy)) {
-            printf("Symbol %u (original SCC: %u - SCC has invalid float values, skipping)\n", i, sym->original_scc);
+            printf("Symbol %u (current SCC: %u - SCC has invalid float values, skipping)\n", i, current_scc);
             continue;
         }
-        
-        printf("Symbol %u (original SCC: %u, members: %u, coherence: %f, entropy: %f, stable_epochs: %u, is_forced: %d): ",
-               i, sym->original_scc,
+
+        printf("Symbol %u (canonical node: %u, current SCC: %u, members: %u, coherence: %f, entropy: %f, stable_epochs: %u, is_forced: %d): ",
+               i, canonical_node, current_scc,
                atomic_load_explicit(&scc->member_count, memory_order_acquire),
                coherence, avg_entropy, atomic_load_explicit(&scc->stable_epochs, memory_order_relaxed), atomic_load_explicit(&scc->is_forced, memory_order_relaxed));
         for (uint32_t m = 0; m < mc; m++) {
             TokenID m_tid = get_node_token(ctx, member_buf[m]);
             const char *decoded = tok_decode(tok_handle, m_tid);
-            printf("'%s' (ID %u, hex: ", decoded ? decoded : "???", m_tid);
-            if (decoded) {
-                for (int h = 0; decoded[h]; h++) {
-                    printf("%02x ", (unsigned char)decoded[h]);
-                }
+            
+            /* FIX: Skip corrupted decoded strings - tokenizer string pool may be corrupted */
+            if (!decoded || strcmp(decoded, "<?>") == 0 || strlen(decoded) < 1) {
+                printf("'%s' (ID %u - CORRUPTED, skipping)\n", decoded ? decoded : "???", m_tid);
+                continue;
+            }
+            
+            printf("'%s' (ID %u, hex: ", decoded, m_tid);
+            for (int h = 0; decoded[h]; h++) {
+                printf("%02x ", (unsigned char)decoded[h]);
             }
             printf(") ");
         }
@@ -417,7 +467,10 @@ int main(int argc, char **argv) {
                  * CRITICAL FIX: Cap open-addressing scan at HASH_SIZE steps */
                 NodeID current_node = INVALID;
                 {
-                    uint32_t h = tid % HASH_SIZE;
+                    /* CRITICAL FIX C-5: Use Fibonacci hash to match le_get_or_create_node
+                 * Simple modulo hash causes lookup to start at different bucket than
+                 * where node was inserted, making context predictions fail. */
+                uint32_t h = (tid * 0x9E3779B1u) % HASH_SIZE;
                     uint32_t steps = 0;
                     NodeID slot;
                     while (steps < HASH_SIZE &&
@@ -495,7 +548,8 @@ int main(int argc, char **argv) {
                     TokenID m_tid = get_node_token(ctx, member_buf[m]);
                     char w[256] = {0};
                     const char *decoded = tok_decode(tok_handle, m_tid);
-                    if (!decoded) continue;
+                    /* FIX: Skip corrupted decoded strings - tokenizer string pool may be corrupted */
+                    if (!decoded || strcmp(decoded, "<?>") == 0 || strlen(decoded) < 1) continue;
                     strncpy(w, decoded, sizeof(w) - 1);
                     
                     const char *cmp_w = w;
@@ -515,7 +569,7 @@ int main(int argc, char **argv) {
                             preds[pred_count].word[sizeof(preds[pred_count].word) - 1] = '\0';
                             preds[pred_count].prob = 1.0f;
                             pred_count++;
-                            break;
+                            /* M-5 FIX: Remove inner break to allow multiple nodes per symbol */
                         }
                     }
                 }
@@ -548,8 +602,8 @@ int main(int argc, char **argv) {
                 }
             }
             
-            // Hard fallback to token array sequence ONLY if the frequency file is missing or yielded no results
-            if (pred_count == 0) {
+         // Hard fallback to token array sequence if we still have available prediction slots
+         if (pred_count < MAX_PREDICTIONS) {
                 uint32_t vocab_limit = tok_vocab_size(tok_handle);
                 for (uint32_t i = 0; i < vocab_limit && pred_count < MAX_PREDICTIONS; i++) {
                     const char *decoded = tok_decode(tok_handle, i);
@@ -557,6 +611,9 @@ int main(int argc, char **argv) {
                      * duplicate strings omitted during build. A break here aborted
                      * the entire prefix search on the very first gap. Use continue. */
                     if (!decoded) continue;
+                    
+                    /* FIX: Skip corrupted decoded strings - tokenizer string pool may be corrupted */
+                    if (strcmp(decoded, "<?>") == 0 || strlen(decoded) < 1) continue;
                     
                     if (decoded[0] == '\0' || decoded[0] == '[') continue;
                     

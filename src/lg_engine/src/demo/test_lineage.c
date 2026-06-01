@@ -94,9 +94,9 @@ void test_engine_step_isolation(void) {
     atomic_store_explicit(&ctx->transient_nodes[1001].scc_id, 0, memory_order_release);
     atomic_store_explicit(&ctx->transient_nodes[2001].scc_id, 1, memory_order_release);
 
-    /* Mock symbol-to-SCC reverse mapping in the DAWG nodes */
-    ctx->dawg_nodes[sym_a].original_scc = 0;
-    ctx->dawg_nodes[sym_b].original_scc = 1;
+    /* Mock symbol-to-canonical-node mapping in the DAWG nodes */
+    ctx->dawg_nodes[sym_a].canonical_node = 1001;
+    ctx->dawg_nodes[sym_b].canonical_node = 2001;
     atomic_store(&ctx->symbol_count, 300); /* Ensure symbol IDs are within bounds */
 
     /* Mock the token hash table for the input symbol (sym_b) */

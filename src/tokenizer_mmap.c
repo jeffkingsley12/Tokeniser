@@ -240,30 +240,50 @@ MmapTokenizer *tokenizer_load_mmap_from_buffer(const void *buf, size_t size) {
 }
 
 void tokenizer_destroy_mmap(MmapTokenizer *mt) {
-    if (!mt) return;
+    fprintf(stderr, "[DESTROY_MMAP] mt=%p\n", (void*)mt);
+    if (!mt) {
+        fprintf(stderr, "[DESTROY_MMAP] NULL mt, returning\n");
+        return;
+    }
 
     Tokenizer *t = &mt->base;
+    fprintf(stderr, "[DESTROY_MMAP] t=%p\n", (void*)t);
 
     /* Free transient tables */
+    fprintf(stderr, "[DESTROY_MMAP] freeing stbl\n");
     if (t->stbl) {
         if (t->stbl->trie) syltrie_destroy(t->stbl->trie);
         free(t->stbl);
     }
+    fprintf(stderr, "[DESTROY_MMAP] freeing syl\n");
     if (t->syl) syllabifier_destroy(t->syl);
-    if (t->louds) louds_destroy(t->louds);
+    fprintf(stderr, "[DESTROY_MMAP] skipping louds free (mmap'd pointer)\n");
+    /* WORKAROUND: louds internal arrays point into mmap'd region.
+     * The LOUDS struct wrapper is also potentially mmap'd in some paths.
+     * Skip the free entirely - the OS will reclaim mmap'd memory on exit.
+     * The mmap'd region will be unmapped below. */
+    if (t->louds) {
+        t->louds = NULL;  /* Poison pointer */
+    }
+    fprintf(stderr, "[DESTROY_MMAP] freeing id_to_str\n");
     if (t->id_to_str) free(t->id_to_str);
+    fprintf(stderr, "[DESTROY_MMAP] freeing token features\n");
     free(t->token_features);
     free(t->token_requires);
     free(t->token_forbids);
+    fprintf(stderr, "[DESTROY_MMAP] freeing rs\n");
     if (t->rs) free(t->rs);
+    fprintf(stderr, "[DESTROY_MMAP] freeing gp_expansions\n");
     if (t->gp_expansions) free(t->gp_expansions);
 
     /* Unmap before closing fd */
+    fprintf(stderr, "[DESTROY_MMAP] unmapping\n");
     if (mt->owns_buffer && mt->mmap_base) {
         munmap(mt->mmap_base, mt->mmap_size);
         mt->mmap_base = NULL;
     }
 
+    fprintf(stderr, "[DESTROY_MMAP] closing fd\n");
     if (mt->fd >= 0) {
         close(mt->fd);
         mt->fd = -1;

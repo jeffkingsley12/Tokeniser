@@ -115,13 +115,15 @@ NodeID le_scc_head(EngineContext *ctx, SccID scc_id) {
 
 float le_scc_mean_turbulence(EngineContext *ctx, SccID scc_id) {
     if (!ctx || scc_id >= MAX_SCCS) return 0.0f;
-    const SccNode *scc = &ctx->scc_nodes[scc_id];
+    
+    /* CRITICAL FIX: Drop const to avoid casting violations later */
+    SccNode *scc = &ctx->scc_nodes[scc_id];
     uint32_t member_count = atomic_load_explicit(&scc->member_count, memory_order_acquire);
     if (member_count == 0) return 0.0f;
 
     double sum = 0.0;
     uint32_t count = 0;
-    NodeID cur = atomic_load_explicit(&((SccNode *)scc)->head, memory_order_acquire);
+    NodeID cur = atomic_load_explicit(&scc->head, memory_order_acquire);
 
     while (cur != INVALID && count < member_count) {
         /* FIX (Issue #16): Guard cur against MAX_NODES before indexing nodes[].
@@ -132,7 +134,14 @@ float le_scc_mean_turbulence(EngineContext *ctx, SccID scc_id) {
                     "(count=%u, member_count=%u)\n", scc_id, cur, count, member_count);
             break;
         }
-        sum += (double)ctx->nodes[cur].turbulence;
+        
+        /* CRITICAL FIX: Safely extract float from atomic bit pattern using memcpy
+         * This avoids torn reads on IEEE-754 bit pattern during concurrent mutations */
+        uint32_t turb_bits = atomic_load_explicit(&ctx->nodes[cur].turbulence, memory_order_relaxed);
+        float turb_val;
+        memcpy(&turb_val, &turb_bits, sizeof(float));
+        sum += (double)turb_val;
+        
         /* FIX (Issue #3): next_in_scc is now _Atomic uint32_t. */
         cur = atomic_load_explicit(&ctx->transient_nodes[cur].next_in_scc, memory_order_acquire);
         count++;
@@ -148,6 +157,15 @@ float le_scc_mean_turbulence(EngineContext *ctx, SccID scc_id) {
 
 /* ── Closed-Loop Feedback Ingestion Hooks ───────────────────────────────────── */
 
+/**
+ * engine_get_scc_stability - Compute global graph stability.
+ * THREAD SAFETY WARNING: 
+ * This is an O(scc_count) operation. It performs lock-free acquire loads 
+ * across the SCC array. If called concurrently with active ingestion or 
+ * epoch transitions, the returned average is "fuzzy" (eventually consistent).
+ * For deterministic analytics (e.g., via Python bindings), this MUST be called 
+ * while the engine ingestion pipeline is paused or externally read-locked.
+ */
 float engine_get_scc_stability(EngineContext* ctx) {
     if (!ctx) return 0.0f;
     uint32_t scc_count = atomic_load(&ctx->scc_count);
@@ -216,23 +234,44 @@ TokenID get_node_token(EngineContext *ctx, NodeID node) {
 }
 
 /**
- * le_get_symbol_nodes - Scans for all NodeIDs mapped to a target SymbolID.
- * Fills out_buf up to max_nodes, returning the total global match count.
+ * le_get_symbol_nodes - Returns all NodeIDs belonging to a promoted symbol.
+ * Fills out_buf up to max_nodes, returning the total member count.
  */
 uint32_t le_get_symbol_nodes(EngineContext *ctx, SymbolID sym, NodeID *out_buf, uint32_t max_nodes) {
     if (!ctx || !out_buf || max_nodes == 0) return 0;
-    
-    uint32_t match_count = 0;
-    uint32_t total_nodes = atomic_load_explicit(&ctx->node_count, memory_order_acquire);
-    
-    for (uint32_t i = 0; i < total_nodes; i++) {
-        if (ctx->nodes[i].token_id == sym) {
-            if (match_count < max_nodes) {
-                out_buf[match_count] = (NodeID)i;
-            }
-            match_count++;
-        }
+
+    uint32_t symbol_count = atomic_load_explicit(&ctx->symbol_count, memory_order_acquire);
+    if (sym >= symbol_count || sym >= MAX_SYMBOLS) return 0;
+
+    /* Get the Symbol struct */
+    Symbol* symbol = &ctx->dawg_nodes[sym];
+
+    /* CRITICAL FIX: Use canonical_node instead of original_scc for stable identity
+     * SCC slots are ephemeral across Kosaraju runs, but the canonical node
+     * provides stable identity. Look up the current SCC for this node. */
+    NodeID canonical_node = symbol->canonical_node;
+    if (canonical_node == INVALID || canonical_node >= MAX_NODES) return 0;
+
+    /* Get the current SCC for this canonical node */
+    SccID current_scc = atomic_load_explicit(&ctx->transient_nodes[canonical_node].scc_id, memory_order_acquire);
+    if (current_scc >= MAX_SCCS) return 0;
+
+    /* Get the SCC struct */
+    SccNode* scc = &ctx->scc_nodes[current_scc];
+    uint32_t member_count = atomic_load_explicit(&scc->member_count, memory_order_acquire);
+
+    if (member_count == 0) return 0;
+
+    /* Traverse the SCC's member list */
+    uint32_t count = 0;
+    NodeID node = atomic_load_explicit(&scc->head, memory_order_acquire);
+    uint32_t guard = 0;
+
+    while (node != INVALID && guard++ < member_count && count < max_nodes) {
+        if (node >= MAX_NODES) break;
+        out_buf[count++] = node;
+        node = atomic_load_explicit(&ctx->transient_nodes[node].next_in_scc, memory_order_acquire);
     }
-    
-    return match_count;
+
+    return count;
 }

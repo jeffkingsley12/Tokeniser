@@ -1434,6 +1434,24 @@ __attribute__((destructor)) static void tokenizer_library_unload(void) {
 #define LATTICE_HAS_POSIX_TLS 0
 #endif
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <windows.h>
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
+    (void)hModule;
+    (void)lpReserved;
+    if (ul_reason_for_call == DLL_PROCESS_DETACH) {
+#if LATTICE_HAS_POSIX_TLS
+        /* Windows-specific dynamic library unloading hook */
+        if (lattice_key_created) {
+            pthread_key_delete(lattice_lazy_key);
+            lattice_key_created = false;
+        }
+#endif
+    }
+    return TRUE;
+}
+#endif
+
 #define LATTICE_BEAM_WIDTH 64
 #define LATTICE_MAX_POS 512
 

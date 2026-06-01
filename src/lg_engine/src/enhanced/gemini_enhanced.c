@@ -11,7 +11,7 @@
 #include "gemini_semantic.h"
 #include "../validation/gemini_eval.h"
 #include "libgemini.h"
-#include "../gemini_internal.h"
+#include "../include/gemini_internal.h"
 
 #include <ctype.h>
 #include <stdio.h>
@@ -78,7 +78,7 @@ GeminiEnhanced *gemini_enhanced_create(const EnhancedConfig *cfg) {
     ge->cfg.eval_test_csv = NULL;
 
     /* Safe allocation block to prevent dangling pointers on OOM */
-#define SAFE_STRDUP(dest, src) \
+#define SAFE_ASSIGN_STR(dest, src) \
     do { \
         if (src) { \
             dest = strdup(src); \
@@ -88,10 +88,10 @@ GeminiEnhanced *gemini_enhanced_create(const EnhancedConfig *cfg) {
         } \
     } while(0)
 
-    SAFE_STRDUP(ge->cfg.ngram_prior_path, cfg->ngram_prior_path);
-    SAFE_STRDUP(ge->cfg.attest_wordlist_path, cfg->attest_wordlist_path);
-    SAFE_STRDUP(ge->cfg.embedding_path, cfg->embedding_path);
-    SAFE_STRDUP(ge->cfg.eval_test_csv, cfg->eval_test_csv);
+    SAFE_ASSIGN_STR(ge->cfg.ngram_prior_path, cfg->ngram_prior_path);
+    SAFE_ASSIGN_STR(ge->cfg.attest_wordlist_path, cfg->attest_wordlist_path);
+    SAFE_ASSIGN_STR(ge->cfg.embedding_path, cfg->embedding_path);
+    SAFE_ASSIGN_STR(ge->cfg.eval_test_csv, cfg->eval_test_csv);
 
 #undef SAFE_STRDUP
 

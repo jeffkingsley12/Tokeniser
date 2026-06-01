@@ -70,11 +70,35 @@ uint32_t le_lexeme_frequency(EngineContext *ctx, uint32_t lexeme_id);
 /**
  * le_lexeme_surface - Reverse lookup: lexeme_id → surface form.
  *
+ * WARNING: Returns an internal pointer that may become dangling if the
+ * lexeme registry is modified concurrently. Prefer le_lexeme_surface_safe()
+ * in threaded contexts.
+ *
  * @ctx: Engine context
  * @lexeme_id: Canonical ID
  *
  * Returns: NUL-terminated UTF-8 string (owned by ctx), or NULL if invalid
  */
 const char* le_lexeme_surface(EngineContext *ctx, uint32_t lexeme_id);
+
+/**
+ * le_lexeme_surface_safe - Thread-safe reverse lookup with bounded copy.
+ *
+ * Copies the surface form into a caller-allocated buffer while the read
+ * lock is held, eliminating the TOCTOU vulnerability in le_lexeme_surface().
+ *
+ * @ctx: Engine context
+ * @lexeme_id: Canonical ID from le_intern_lexeme()
+ * @out_buf: Caller-allocated output buffer
+ * @buf_capacity: Size of out_buf in bytes (must include space for NUL)
+ *
+ * Returns:  0 on success
+ *          -1 invalid arguments
+ *          -2 lexeme_id out of bounds
+ *          -3 null/uninitialized surface entry
+ *          -4 buffer too small (would truncate)
+ */
+int le_lexeme_surface_safe(EngineContext *ctx, uint32_t lexeme_id,
+                           char *out_buf, size_t buf_capacity);
 
 #endif /* LEXEME_INTERN_H */

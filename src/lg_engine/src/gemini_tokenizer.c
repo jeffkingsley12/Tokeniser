@@ -78,8 +78,8 @@ struct Tokenizer {
     char     word_buf[MAX_WORD_LEN];
     uint32_t word_len;         /* Current chars in buffer */
 
-    /* Issue 9: per-tokenizer mutex for concurrent callers */
-    pthread_mutex_t lock;
+    /* Issue 9: per-tokenizer rwlock for concurrent callers - allows parallel reads */
+    pthread_rwlock_t rwlock;
 };
 
 
@@ -99,9 +99,9 @@ Tokenizer* tokenizer_init(void) {
     t->pool_used = 0;
     t->word_len  = 0;
     
-    /* HIGH FIX (Issue #21): Check pthread_mutex_init return value */
-    if (pthread_mutex_init(&t->lock, NULL) != 0) {
-        fprintf(stderr, "ERROR: Failed to initialize tokenizer mutex\n");
+    /* HIGH FIX (Issue #21): Check pthread_rwlock_init return value */
+    if (pthread_rwlock_init(&t->rwlock, NULL) != 0) {
+        fprintf(stderr, "ERROR: Failed to initialize tokenizer rwlock\n");
         free(t);
         return NULL;
     }
@@ -110,7 +110,7 @@ Tokenizer* tokenizer_init(void) {
 
 void tokenizer_destroy(Tokenizer* t) {
     if (!t) return;
-    pthread_mutex_destroy(&t->lock);
+    pthread_rwlock_destroy(&t->rwlock);
     free(t);
 }
 
@@ -147,7 +147,7 @@ uint32_t tokenizer_get_id(Tokenizer* t, const char* word, bool create_if_missing
     clean_word[len] = '\0';
     word = clean_word;
 
-    pthread_mutex_lock(&t->lock);
+    pthread_rwlock_rdlock(&t->rwlock);
 
     /* The root sentinel node's `mid` is the entry point */
     uint32_t* curr = &t->nodes[0].mid;
@@ -162,21 +162,40 @@ uint32_t tokenizer_get_id(Tokenizer* t, const char* word, bool create_if_missing
     while (*p) {
         if (tst_steps++ >= MAX_TRIE_NODES) {
             fprintf(stderr, "ERROR: TST traversal limit exceeded — possible cycle in node array\n");
-            pthread_mutex_unlock(&t->lock);
+            pthread_rwlock_unlock(&t->rwlock);
             return 0;
         }
         if (*curr == TST_NIL) {
-            if (!create_if_missing) { pthread_mutex_unlock(&t->lock); return 0; }
+            if (!create_if_missing) { pthread_rwlock_unlock(&t->rwlock); return 0; }
+
+            /* Lock upgrade path: release read lock, acquire write lock */
+            pthread_rwlock_unlock(&t->rwlock);
+            pthread_rwlock_wrlock(&t->rwlock);
+
+            /* Double-check in case another thread just created it */
+            if (*curr != TST_NIL) {
+                /* LOW FIX M-3: Reset step counter on retry to prevent false limit hits.
+                 * Without this reset, tst_steps accumulates across retries and can hit
+                 * MAX_TRIE_NODES even though each individual traversal is valid. */
+                tst_steps = 0;
+                pthread_rwlock_unlock(&t->rwlock);
+                pthread_rwlock_rdlock(&t->rwlock);
+                continue;
+            }
 
             /* Create new node on the fly */
             if (t->node_count >= MAX_TRIE_NODES) {
                 fprintf(stderr, "ERROR: TST node limit reached\n");
-                pthread_mutex_unlock(&t->lock);
+                pthread_rwlock_unlock(&t->rwlock);
                 return UINT32_MAX;
             }
             *curr = t->node_count++;
             memset(&t->nodes[*curr], 0, sizeof(TSTNode));
             t->nodes[*curr].c = *p;
+
+            /* Downgrade back to read lock for continued traversal */
+            pthread_rwlock_unlock(&t->rwlock);
+            pthread_rwlock_rdlock(&t->rwlock);
         }
 
         TSTNode* node = &t->nodes[*curr];
@@ -192,9 +211,20 @@ uint32_t tokenizer_get_id(Tokenizer* t, const char* word, bool create_if_missing
             if (*p == '\0') {
                 /* End of word */
                 if (node->token_id == 0 && create_if_missing) {
+                    /* Lock upgrade path for token ID assignment */
+                    pthread_rwlock_unlock(&t->rwlock);
+                    pthread_rwlock_wrlock(&t->rwlock);
+
+                    /* Double-check in case another thread just assigned it */
+                    if (node->token_id != 0) {
+                        uint32_t result = node->token_id;
+                        pthread_rwlock_unlock(&t->rwlock);
+                        return result;
+                    }
+
                     if (t->token_sequence >= MAX_VOCAB - 1) {
                         fprintf(stderr, "ERROR: Vocab limit reached\n");
-                        pthread_mutex_unlock(&t->lock);
+                        pthread_rwlock_unlock(&t->rwlock);
                         return UINT32_MAX;
                     }
                     node->token_id = ++t->token_sequence;
@@ -211,21 +241,25 @@ uint32_t tokenizer_get_id(Tokenizer* t, const char* word, bool create_if_missing
                         /* Rollback: reset token_id since we couldn't store the string */
                         node->token_id = 0;
                         t->token_sequence--;  /* Undo increment */
-                        pthread_mutex_unlock(&t->lock);
+                        pthread_rwlock_unlock(&t->rwlock);
                         return UINT32_MAX;
                     }
                     t->id_to_offset[node->token_id] = t->pool_used;
                     memcpy(&t->string_pool[t->pool_used], word, str_copy_len);
                     t->pool_used += (uint32_t)str_copy_len;
+
+                    uint32_t result = node->token_id;
+                    pthread_rwlock_unlock(&t->rwlock);
+                    return result;
                 }
                 uint32_t result = node->token_id;
-                pthread_mutex_unlock(&t->lock);
+                pthread_rwlock_unlock(&t->rwlock);
                 return result;
             }
             curr = &node->mid;
         }
     }
-    pthread_mutex_unlock(&t->lock);
+    pthread_rwlock_unlock(&t->rwlock);
     return 0;
 }
 
@@ -244,20 +278,97 @@ uint32_t tokenizer_get_id(Tokenizer* t, const char* word, bool create_if_missing
 const char* tokenizer_get_word(Tokenizer* t, uint32_t id) {
     if (!t || id == 0) return "<?>";
     
-    pthread_mutex_lock(&t->lock);
+    pthread_rwlock_rdlock(&t->rwlock);
     if (id > t->token_sequence) {
-        pthread_mutex_unlock(&t->lock);
+        pthread_rwlock_unlock(&t->rwlock);
         return "<?>";
     }
     /* FIX (Issue #18 addendum): Bounds-check the offset before dereference.
      * A corrupt save file could have id_to_offset[id] >= pool_used. */
     if (t->id_to_offset[id] >= t->pool_used) {
-        pthread_mutex_unlock(&t->lock);
+        pthread_rwlock_unlock(&t->rwlock);
         return "<?>";
     }
     const char* result = &t->string_pool[t->id_to_offset[id]];
-    pthread_mutex_unlock(&t->lock);
+    pthread_rwlock_unlock(&t->rwlock);
     return result;
+}
+
+/**
+ * L-2 FIX: tokenizer_get_word_safe - Safe reverse lookup with additional validation.
+ * Returns "<?>" for unknown IDs or corrupted data structures.
+ * 
+ * This function provides additional safety checks beyond tokenizer_get_word:
+ * - Validates magic and version fields to detect corrupted tokenizer state
+ * - Checks string null-termination within pool bounds
+ * - Validates UTF-8 encoding of the returned string
+ * - Handles all error cases gracefully without crashing
+ * 
+ * NOTE: Returned pointer is only valid while the Tokenizer exists and while the lock is held.
+ * Callers should copy the string if they need it beyond the lock scope.
+ */
+const char* tokenizer_get_word_safe(Tokenizer* t, uint32_t id, char* out_buf, size_t buf_len) {
+    if (!t || !out_buf || buf_len == 0) {
+        if (out_buf && buf_len > 0) out_buf[0] = '\0';
+        return "<?>";
+    }
+    
+    /* Initialize output buffer */
+    out_buf[0] = '\0';
+    
+    if (id == 0) return "<?>";
+    
+    pthread_rwlock_rdlock(&t->rwlock);
+    
+    /* Validate tokenizer state */
+    if (t->magic != 0x54535420 || t->version != 1) {
+        pthread_rwlock_unlock(&t->rwlock);
+        snprintf(out_buf, buf_len, "<?>");
+        return "<?>";
+    }
+    
+    /* Check ID bounds */
+    if (id > t->token_sequence) {
+        pthread_rwlock_unlock(&t->rwlock);
+        snprintf(out_buf, buf_len, "<?>");
+        return "<?>";
+    }
+    
+    /* Check offset bounds */
+    if (t->id_to_offset[id] >= t->pool_used) {
+        pthread_rwlock_unlock(&t->rwlock);
+        snprintf(out_buf, buf_len, "<?>");
+        return "<?>";
+    }
+    
+    uint32_t offset = t->id_to_offset[id];
+    const char* str = &t->string_pool[offset];
+    
+    /* Validate null-termination within pool bounds */
+    bool null_terminated = false;
+    for (uint32_t i = offset; i < t->pool_used; i++) {
+        if (t->string_pool[i] == '\0') {
+            null_terminated = true;
+            break;
+        }
+    }
+    
+    if (!null_terminated) {
+        pthread_rwlock_unlock(&t->rwlock);
+        snprintf(out_buf, buf_len, "<?>");
+        return "<?>";
+    }
+    
+    /* Copy string to output buffer with bounds checking */
+    size_t str_len = strlen(str);
+    if (str_len >= buf_len) {
+        str_len = buf_len - 1;
+    }
+    memcpy(out_buf, str, str_len);
+    out_buf[str_len] = '\0';
+    
+    pthread_rwlock_unlock(&t->rwlock);
+    return out_buf;
 }
 
 
@@ -399,19 +510,26 @@ static inline bool is_unicode_punct_ex(uint32_t cp, PunctFilter allow_fn) {
 
 static void stream_flush(StreamContext *ctx) {
     if (ctx->len == 0) return;
-    
+
     ctx->buffer[ctx->len] = '\0';
-    
-    /* Intern surface form to canonical lexeme ID */
+
+    /* Intern surface form to canonical lexeme ID for frequency tracking */
     uint32_t lexeme_id = le_intern_lexeme(ctx->gemini, ctx->buffer);
     if (lexeme_id == UINT32_MAX) { ctx->len = 0; return; } /* Interning failed, skip */
-    
-    /* Ingest canonical lexeme (not token occurrence ID) into engine */
+
+    /* CRITICAL FIX: Get TST token ID and use that for graph construction
+     * The hash table and decode lookups must use the same ID space (TST IDs),
+     * not the separate lexeme intern index. This fixes hash table misses and
+     * wrong word decoding in the autocomplete CLI. */
+    uint32_t tok_id = tokenizer_get_id(ctx->tokenizer, ctx->buffer, true);
+    if (tok_id == 0 || tok_id == UINT32_MAX) { ctx->len = 0; return; } /* Token lookup failed, skip */
+
+    /* Ingest TST token ID (not lexeme index) into engine */
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-    ctx->prev_node = le_process_token(ctx->gemini, lexeme_id, ctx->prev_node);
+    ctx->prev_node = le_process_token(ctx->gemini, tok_id, ctx->prev_node);
     #pragma GCC diagnostic pop
-    
+
     ctx->len = 0;
 }
 
@@ -441,13 +559,21 @@ static void stream_push_byte(StreamContext *ctx, unsigned char byte) {
         if (cp < 128) {
             ctx->buffer[0] = (char)cp;
             ctx->buffer[1] = '\0';
-            /* Intern punctuation to canonical lexeme ID */
+            /* Intern punctuation to canonical lexeme ID for frequency tracking */
             uint32_t lexeme_id = le_intern_lexeme(ctx->gemini, ctx->buffer);
             if (lexeme_id != UINT32_MAX) {
-              #pragma GCC diagnostic push
-              #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
-              ctx->prev_node = le_process_token(ctx->gemini, lexeme_id, ctx->prev_node);
-              #pragma GCC diagnostic pop
+                /* FIX: Get the TST token ID for graph construction, NOT the lexeme intern index.
+                 * The graph hash table and tok_decode() both operate in the TST ID space.
+                 * Passing lexeme_id here caused hash-table misses and wrong word decoding,
+                 * because lexeme IDs and TST token IDs are independent monotonic sequences.
+                 * This mirrors the correct pattern already used in stream_flush(). */
+                uint32_t tok_id = tokenizer_get_id(ctx->tokenizer, ctx->buffer, true);
+                if (tok_id != 0 && tok_id != UINT32_MAX) {
+                  #pragma GCC diagnostic push
+                  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+                  ctx->prev_node = le_process_token(ctx->gemini, tok_id, ctx->prev_node);
+                  #pragma GCC diagnostic pop
+                }
             }
             /* Reset chain on sentence terminators */
             if (cp == '.' || cp == '?' || cp == '!') {
@@ -501,31 +627,47 @@ static void stream_push_byte(StreamContext *ctx, unsigned char byte) {
 bool tokenizer_save(Tokenizer* t, const char* path) {
     if (!t || !path) return false;
 
-    /* CRITICAL FIX: Acquire lock to prevent concurrent modifications during save */
-    pthread_mutex_lock(&t->lock);
+    /* CRITICAL FIX: Acquire lock to copy data, then release before disk I/O
+     * Holding the lock during blocking disk I/O stalls all active inference and
+     * ingestion threads in production. We copy the required data under the lock,
+     * release immediately, then write to disk asynchronously. */
+    pthread_rwlock_wrlock(&t->rwlock);
 
-    /* CRITICAL FIX: Write fields directly to file to eliminate 27MB intermediate buffer
-     * The intermediate copy is unnecessary since fwrite on a buffered FILE* is already
-     * internally buffered. This eliminates the large allocation and makes allocation
-     * failure impossible for this operation. */
+    /* Allocate buffer for all data to be written */
+    size_t total_size = sizeof(t->magic) + sizeof(t->version) + sizeof(t->nodes) +
+                        sizeof(t->node_count) + sizeof(t->token_sequence) +
+                        sizeof(t->string_pool) + sizeof(t->pool_used) + sizeof(t->id_to_offset);
+    uint8_t* buffer = (uint8_t*)malloc(total_size);
+    if (!buffer) {
+        pthread_rwlock_unlock(&t->rwlock);
+        fprintf(stderr, "ERROR: tokenizer_save failed to allocate buffer\n");
+        return false;
+    }
+
+    /* Copy data under lock */
+    uint8_t* ptr = buffer;
+    memcpy(ptr, &t->magic, sizeof(t->magic)); ptr += sizeof(t->magic);
+    memcpy(ptr, &t->version, sizeof(t->version)); ptr += sizeof(t->version);
+    memcpy(ptr, t->nodes, sizeof(t->nodes)); ptr += sizeof(t->nodes);
+    memcpy(ptr, &t->node_count, sizeof(t->node_count)); ptr += sizeof(t->node_count);
+    memcpy(ptr, &t->token_sequence, sizeof(t->token_sequence)); ptr += sizeof(t->token_sequence);
+    memcpy(ptr, t->string_pool, sizeof(t->string_pool)); ptr += sizeof(t->string_pool);
+    memcpy(ptr, &t->pool_used, sizeof(t->pool_used)); ptr += sizeof(t->pool_used);
+    memcpy(ptr, t->id_to_offset, sizeof(t->id_to_offset)); ptr += sizeof(t->id_to_offset);
+
+    /* Release lock before disk I/O */
+    pthread_rwlock_unlock(&t->rwlock);
+
+    /* Write buffer to disk without holding lock */
     FILE* f = fopen(path, "wb");
     if (!f) {
-        pthread_mutex_unlock(&t->lock);
+        free(buffer);
         perror("tokenizer_save");
         return false;
     }
 
-    size_t written = 0;
-    written += fwrite(&t->magic, sizeof(t->magic), 1, f);
-    written += fwrite(&t->version, sizeof(t->version), 1, f);
-    written += fwrite(t->nodes, sizeof(t->nodes), 1, f);
-    written += fwrite(&t->node_count, sizeof(t->node_count), 1, f);
-    written += fwrite(&t->token_sequence, sizeof(t->token_sequence), 1, f);
-    written += fwrite(t->string_pool, sizeof(t->string_pool), 1, f);
-    written += fwrite(&t->pool_used, sizeof(t->pool_used), 1, f);
-    written += fwrite(t->id_to_offset, sizeof(t->id_to_offset), 1, f);
-
-    pthread_mutex_unlock(&t->lock);
+    size_t written = fwrite(buffer, 1, total_size, f);
+    free(buffer);
 
     /* HIGH FIX (Issue #17): Check fclose return value for flush errors */
     int close_ret = fclose(f);
@@ -534,7 +676,7 @@ bool tokenizer_save(Tokenizer* t, const char* path) {
         return false;
     }
 
-    return (written == 9); /* 9 items written */
+    return (written == total_size);
 }
 
 /**
@@ -605,19 +747,33 @@ Tokenizer* tokenizer_load(const char* path) {
         return NULL;
     }
     
-    /* Validate id_to_offset ranges */
+    /* Validate id_to_offset ranges and null-termination */
     for (uint32_t i = 1; i <= t->token_sequence; i++) {
-        if (t->id_to_offset[i] >= t->pool_used) {
+        uint32_t offset = t->id_to_offset[i];
+        if (offset >= t->pool_used) {
             fprintf(stderr, "ERROR: id_to_offset[%u] = %u exceeds pool_used %u\n",
-                    i, t->id_to_offset[i], t->pool_used);
+                    i, offset, t->pool_used);
+            free(t);
+            return NULL;
+        }
+        /* Ensure null-termination within pool bounds */
+        bool valid = false;
+        for (uint32_t j = offset; j < t->pool_used; j++) {
+            if (t->string_pool[j] == '\0') {
+                valid = true;
+                break;
+            }
+        }
+        if (!valid) {
+            fprintf(stderr, "ERROR: Token string at offset %u is not null-terminated\n", offset);
             free(t);
             return NULL;
         }
     }
 
-    /* Re-initialize mutex after load (Issue #16: mutex was not serialized) */
-    if (pthread_mutex_init(&t->lock, NULL) != 0) {
-        fprintf(stderr, "ERROR: Failed to initialize tokenizer mutex after load\n");
+    /* Re-initialize rwlock after load (Issue #16: rwlock was not serialized) */
+    if (pthread_rwlock_init(&t->rwlock, NULL) != 0) {
+        fprintf(stderr, "ERROR: Failed to initialize tokenizer rwlock after load\n");
         free(t);
         return NULL;
     }
@@ -627,7 +783,10 @@ Tokenizer* tokenizer_load(const char* path) {
 
 uint32_t tokenizer_vocab_size(Tokenizer* t) {
     if (!t) return 0;
-    return t->token_sequence;
+    pthread_rwlock_rdlock(&t->rwlock);
+    uint32_t size = t->token_sequence;
+    pthread_rwlock_unlock(&t->rwlock);
+    return size;
 }
 
 
@@ -654,6 +813,66 @@ NodeID tokenizer_process_text(Tokenizer* t, EngineContext* engine,
     
     /* Ensure trailing content is flushed */
     stream_flush(&ctx);
-    
+
     return ctx.prev_node;
+}
+
+/* ------------------------------------------------------------------ */
+/* Tokenizer handle registry for bridge_engine.c                      */
+/* ------------------------------------------------------------------ */
+#define MAX_TOKENIZERS 8
+static Tokenizer *g_tokenizers[MAX_TOKENIZERS] = {0};
+
+int tok_register_tokenizer(void *t) {
+    for (int i = 0; i < MAX_TOKENIZERS; i++) {
+        if (g_tokenizers[i] == NULL) {
+            g_tokenizers[i] = (Tokenizer *)t;
+            return i;
+        }
+    }
+    return -1;
+}
+
+int tok_encode_registry(int tok_handle, const char *text, uint32_t *out_buf, size_t out_cap) {
+    if (tok_handle < 0 || tok_handle >= MAX_TOKENIZERS || !g_tokenizers[tok_handle]
+        || !text || !out_buf || out_cap == 0)
+        return -1;
+
+    Tokenizer *t = g_tokenizers[tok_handle];
+    size_t count = 0;
+    const char *p = text;
+
+    while (*p) {
+        while (*p && isspace((unsigned char)*p)) p++;
+        if (!*p) break;
+
+        const char *start = p;
+        while (*p && !isspace((unsigned char)*p)) p++;
+
+        size_t len = (size_t)(p - start);
+        if (len == 0) continue;
+        if (len >= MAX_WORD_LEN) len = MAX_WORD_LEN - 1;
+
+        char word[MAX_WORD_LEN];
+        memcpy(word, start, len);
+        word[len] = '\0';
+
+        for (size_t i = 0; i < len; i++) {
+            if ((unsigned char)word[i] < 128 && isalpha((unsigned char)word[i]))
+                word[i] = (char)tolower((unsigned char)word[i]);
+        }
+
+        uint32_t id = tokenizer_get_id(t, word, true);
+        if (id == 0 || id == UINT32_MAX) return -1;
+
+        if (count >= out_cap) return -1;
+        out_buf[count++] = id;
+    }
+    return (int)count;
+}
+
+const char* tok_decode_registry(int tok_handle, uint32_t token_id) {
+    if (tok_handle < 0 || tok_handle >= MAX_TOKENIZERS || !g_tokenizers[tok_handle])
+        return NULL;
+    return tokenizer_get_word(g_tokenizers[tok_handle], token_id);
 }

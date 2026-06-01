@@ -210,7 +210,7 @@ static void merge_sccs(DemoContext* ctx, SccID target_id, SccID source_id) {
     SccNode* target = &ctx->scc_nodes[target_id];
     SccNode* source = &ctx->scc_nodes[source_id];
     
-    atomic_store_explicit(&ctx->transient_nodes[target->tail].next_in_scc, source->head, memory_order_release) = source->head;
+    atomic_store_explicit(&ctx->transient_nodes[target->tail].next_in_scc, source->head, memory_order_release);
     target->tail = source->tail;
     target->member_count += source->member_count;
     

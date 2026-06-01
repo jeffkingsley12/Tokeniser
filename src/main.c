@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     printf("      Vocab size           : %u\n", tok->vocab_size);
 
     /* ── [2/4] Save ──────────────────────────────────────────────────── */
-    const char *model_path = "/tmp/luganda_tok.bin";
+    const char *model_path = "model/lg_tokeniser.bin";
     printf("\n[2/4] Saving model to %s...\n", model_path);
     if (tokenizer_save(tok, model_path) != 0) {
         fprintf(stderr, "tokenizer_save() failed\n");
@@ -290,11 +290,15 @@ int main(int argc, char *argv[])
         TokenizerCursor cursor;
         tokenizer_cursor_init(&cursor, tok, "okusoma nnyo");
         uint32_t buf[4];  /* Small buffer to force multiple calls */
-        size_t total = 0, chunk;
+        size_t total = 0;
+        ssize_t chunk = 0;  /* Initialize to prevent uninitialized variable warning */
         printf("  Input: \"okusoma nnyo\"\n  Chunks: ");
         while (!cursor.eos && (chunk = tokenizer_encode_streaming(&cursor, buf, 4)) > 0) {
-            printf("[%zu]", chunk);
+            printf("[%zd]", chunk);
             total += chunk;
+        }
+        if (chunk < 0) {
+            fprintf(stderr, "Error: Tokenization stream failed.\n");
         }
         printf(" = %zu tokens total\n", total);
     }

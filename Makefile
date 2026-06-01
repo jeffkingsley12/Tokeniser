@@ -16,14 +16,11 @@ LDFLAGS = -lm
 # Directories
 SRC_DIR = src
 INC_DIR = include
-BUILD_DIR = build_antigravity
-OBJ_DIR = obj_antigravity
+BUILD_DIR = build
+BIN_DIR = bin
 TEST_DIR = test
 DATA_DIR = data
-
-# Create build directories
-BUILD_HYBRID = $(BUILD_DIR)/hybrid
-BUILD_DEBUG = $(BUILD_DIR)/debug
+VOCAB_DIR = vocab
 
 # Include paths
 INCLUDES = -I$(INC_DIR)
@@ -49,9 +46,9 @@ BENCH_SOURCES = $(CORE_SOURCES) \
 MMAP_SOURCES = $(CORE_SOURCES) $(SRC_DIR)/tokenizer_mmap.c
 
 # Object files
-MAIN_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_HYBRID)/%.o,$(MAIN_SOURCES))
-BENCH_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_HYBRID)/%.o,$(BENCH_SOURCES))
-MMAP_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_HYBRID)/%.o,$(MMAP_SOURCES))
+MAIN_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(MAIN_SOURCES))
+BENCH_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(BENCH_SOURCES))
+MMAP_OBJS = $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(MMAP_SOURCES))
 
 # Test source files
 TEST_SOURCES = $(filter-out $(TEST_DIR)/test_edge_cases.c, $(wildcard $(TEST_DIR)/test_*.c))
@@ -70,68 +67,77 @@ ENGINE_INC = -I$(INC_DIR) -I$(SRC_DIR)/lg_engine/include -I$(SRC_DIR)/lg_engine/
 
 # Find all engine source files recursively (excluding demo and test)
 ENGINE_ALL_SRC = $(shell find $(SRC_DIR)/lg_engine/src -name "*.c" ! -path "*/demo/*" ! -path "*/test/*")
-ENGINE_ALL_OBJ = $(patsubst $(SRC_DIR)/lg_engine/src/%.c,$(BUILD_HYBRID)/lg_engine/%.o,$(ENGINE_ALL_SRC))
+ENGINE_ALL_OBJ = $(patsubst $(SRC_DIR)/lg_engine/src/%.c,$(BUILD_DIR)/lg_engine/%.o,$(ENGINE_ALL_SRC))
 
 LIBGEMINI_CORE = libgemini_core.a
 
 # Build static library
 $(LIBGEMINI_CORE): $(ENGINE_ALL_OBJ)
-	ar rcs $@ $^
+	ar rcs $(BUILD_DIR)/$@ $^
 
 # Compile engine sources into objects
-$(BUILD_HYBRID)/lg_engine/%.o: $(SRC_DIR)/lg_engine/src/%.c | dirs
+$(BUILD_DIR)/lg_engine/%.o: $(SRC_DIR)/lg_engine/src/%.c | dirs
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(ENGINE_INC) -c $< -o $@
+
+# Detect AVX2 support on the compiling machine
+AVX2_SUPPORTED := $(shell grep -q avx2 /proc/cpuinfo && echo yes || echo no)
+
+ifeq ($(AVX2_SUPPORTED),yes)
+    AVX2_FLAGS = -mavx2
+else
+    AVX2_FLAGS =
+endif
+
+# Compile engine_lifecycle.c with AVX2 support for SIMD decay pass (if available)
+$(BUILD_DIR)/lg_engine/engine_lifecycle.o: $(SRC_DIR)/lg_engine/src/engine_lifecycle.c | dirs
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) $(ENGINE_INC) $(AVX2_FLAGS) -c $< -o $@
 	
 engine_tools: lib $(LIBGEMINI_CORE) dirs
-	$(CC) $(CFLAGS) $(ENGINE_INC) -o online_learning $(SRC_DIR)/lg_engine/src/demo/online_learning.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
-	$(CC) $(CFLAGS) $(ENGINE_INC) -o autocomplete_cli $(SRC_DIR)/lg_engine/src/demo/autocomplete_cli.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
-	$(CC) $(CFLAGS) $(ENGINE_INC) -o test_lineage $(SRC_DIR)/lg_engine/src/demo/test_lineage.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
-	$(CC) $(CFLAGS) $(ENGINE_INC) -o benchmark_latency $(SRC_DIR)/lg_engine/src/demo/benchmark_latency.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
-	$(CC) $(CFLAGS) $(ENGINE_INC) -o compare_snapshots $(SRC_DIR)/lg_engine/src/demo/compare_snapshots.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $(BIN_DIR)/online_learning $(SRC_DIR)/lg_engine/src/demo/online_learning.c $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN/../build' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $(BIN_DIR)/autocomplete_cli $(SRC_DIR)/lg_engine/src/demo/autocomplete_cli.c $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN/../build' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $(BIN_DIR)/test_lineage $(SRC_DIR)/lg_engine/src/demo/test_lineage.c $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN/../build' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $(BIN_DIR)/benchmark_latency $(SRC_DIR)/lg_engine/src/demo/benchmark_latency.c $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN/../build' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $(BIN_DIR)/compare_snapshots $(SRC_DIR)/lg_engine/src/demo/compare_snapshots.c $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN/../build' $(LDFLAGS) -lpthread -latomic
 
 # Create build directories
 dirs:
-	@mkdir -p $(BUILD_HYBRID) $(BUILD_DEBUG) $(OBJ_DIR)
+	@mkdir -p $(BUILD_DIR) $(BIN_DIR)
 
 # Shared library for Python/FFI integration
 lib: dirs libluganda_tok.so libgemini.so
 
 libluganda_tok.so: dirs
-	$(CC) $(CFLAGS) -shared -fPIC $(INCLUDES) -o libluganda_tok.so $(MMAP_SOURCES) $(SRC_DIR)/tokenizer_api.c $(LDFLAGS)
+	$(CC) $(CFLAGS) -shared -fPIC $(INCLUDES) -o $(BUILD_DIR)/libluganda_tok.so $(MMAP_SOURCES) $(SRC_DIR)/tokenizer_api.c $(LDFLAGS)
 
 libgemini.so: dirs libluganda_tok.so $(LIBGEMINI_CORE)
-	$(CC) $(CFLAGS) -shared -fPIC $(ENGINE_INC) -o libgemini.so $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) -shared -fPIC $(ENGINE_INC) -o $(BUILD_DIR)/libgemini.so $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
 
 # Main tokenizer demo executable
 tokenizer_demo: dirs $(MAIN_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(MAIN_OBJS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(BIN_DIR)/$@ $(MAIN_OBJS) $(LDFLAGS)
 
 # Benchmark executable (root level)
 bench: dirs $(BENCH_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) -o bench $(BENCH_OBJS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(BIN_DIR)/$@ $(BENCH_OBJS) $(LDFLAGS)
 
 # Luganda-specific benchmark
-benchmark_luganda: dirs $(BUILD_HYBRID)/benchmark_luganda.o $(CORE_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(BUILD_HYBRID)/benchmark_luganda.o $(patsubst $(SRC_DIR)/%.c,$(BUILD_HYBRID)/%.o,$(CORE_SOURCES)) $(LDFLAGS)
+benchmark_luganda: dirs $(BUILD_DIR)/benchmark_luganda.o $(CORE_OBJS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(BIN_DIR)/$@ $(BUILD_DIR)/benchmark_luganda.o $(patsubst $(SRC_DIR)/%.c,$(BUILD_DIR)/%.o,$(CORE_SOURCES)) $(LDFLAGS)
 
 # MMAP version
 tokenizer_mmap: dirs $(MMAP_OBJS)
-	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $(MMAP_OBJS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $(INCLUDES) -o $(BIN_DIR)/$@ $(MMAP_OBJS) $(LDFLAGS)
 
-# Compile source files to build/hybrid (release)
-$(BUILD_HYBRID)/%.o: %.c
+# Compile source files to build (release)
+$(BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-$(BUILD_HYBRID)/%.o: $(SRC_DIR)/%.c
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
-
-# Compile source files to build/debug (debug build)
-$(BUILD_DEBUG)/%.o: $(SRC_DIR)/%.c
-	@mkdir -p $(dir $@)
-	$(CC) $(CFLAGS_DEBUG) $(INCLUDES) -c $< -o $@
 
 # Test binaries - compile test sources directly
 $(TEST_DIR)/test_simple_tokenizer: $(TEST_DIR)/test_simple_tokenizer.c $(CORE_SOURCES)
@@ -177,14 +183,17 @@ $(TEST_DIR)/test_production_stress: $(TEST_DIR)/test_production_stress.c $(CORE_
 	$(CC) $(CFLAGS) $(INCLUDES) -o $@ $^ $(LDFLAGS)
 
 $(TEST_DIR)/test_learning_loop: $(TEST_DIR)/test_learning_loop.c $(LIBGEMINI_CORE) libluganda_tok.so
-	$(CC) $(CFLAGS) $(ENGINE_INC) -o $@ $(TEST_DIR)/test_learning_loop.c $(LIBGEMINI_CORE) -L. -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $@ $(TEST_DIR)/test_learning_loop.c $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
+
+$(TEST_DIR)/test_memory_audit: $(TEST_DIR)/test_memory_audit.c $(LIBGEMINI_CORE) libluganda_tok.so
+	$(CC) $(CFLAGS) $(ENGINE_INC) -o $@ $(TEST_DIR)/test_memory_audit.c $(BUILD_DIR)/$(LIBGEMINI_CORE) -L$(BUILD_DIR) -lluganda_tok -Wl,-rpath,'$$ORIGIN' $(LDFLAGS) -lpthread -latomic
 
 # Build all test binaries
-test_bins: $(TEST_BINARIES)
+test_bins: lib $(TEST_BINARIES)
 
 # Debug build
 debug: dirs
-	$(CC) $(CFLAGS_DEBUG) $(INCLUDES) -o tokenizer_debug $(MAIN_SOURCES) $(LDFLAGS)
+	$(CC) $(CFLAGS_DEBUG) $(INCLUDES) -o $(BIN_DIR)/tokenizer_debug $(MAIN_SOURCES) $(LDFLAGS)
 
 # Run tests
 test: all
@@ -198,15 +207,17 @@ run-bench: bench
 
 # Clean build artifacts
 clean:
-	rm -rf $(BUILD_DIR) $(OBJ_DIR)
-	rm -f tokenizer_demo tokenizer_debug bench benchmark_luganda tokenizer_mmap libluganda_tok.so libgemini.so libgemini_core.a benchmark_latency online_learning test_lineage compare_snapshots
+	rm -rf $(BUILD_DIR) $(BIN_DIR)
 	rm -f $(TEST_BINARIES)
 	rm -rf test_results benchmark_results
 
 # Install (optional - customize as needed)
-install: tokenizer_demo
-	@echo "Installing tokenizer_demo..."
-	@cp tokenizer_demo /usr/local/bin/ 2>/dev/null || echo "Install failed: run with sudo"
+install: all
+	@echo "Installing executables to /usr/local/bin/..."
+	@cp $(BIN_DIR)/* /usr/local/bin/ 2>/dev/null || echo "Install failed: run with sudo"
+	@echo "Installing libraries to /usr/local/lib/..."
+	@cp $(BUILD_DIR)/*.so /usr/local/lib/ 2>/dev/null || echo "Install failed: run with sudo"
+	@echo "Installation complete"
 
 # Include dependency files
 -include $(DEPS)
@@ -233,8 +244,7 @@ help:
 	@echo "  src/              - Source files"
 	@echo "  include/          - Header files"
 	@echo "  test/             - Test files"
-	@echo "  build/hybrid/     - Release build objects"
-	@echo "  build/debug/      - Debug build objects"
+	@echo "  build/            - Build objects"
 
 # Build with AddressSanitizer and UndefinedBehaviorSanitizer
 asan:

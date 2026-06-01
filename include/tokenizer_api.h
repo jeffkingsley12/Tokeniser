@@ -2,6 +2,7 @@
 #define TOKENIZER_API_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,6 +48,13 @@ uint32_t    tok_vocab_size(int handle);
  * Returns total tokens encoded, or 0 on invalid handle.
  */
 uint64_t    tok_tokens_encoded(int handle);
+
+/* ------------------------------------------------------------------ */
+/* Tokenizer handle registry for bridge_engine.c                      */
+/* ------------------------------------------------------------------ */
+int tok_register_tokenizer(void *t);
+int tok_encode_registry(int tok_handle, const char *text, uint32_t *out_buf, size_t out_cap);
+const char* tok_decode_registry(int tok_handle, uint32_t token_id);
 
 #ifdef __cplusplus
 }

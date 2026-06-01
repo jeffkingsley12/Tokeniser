@@ -61,9 +61,10 @@ typedef struct {
     MorphMask active_features;
     MorphMask forbidden_features;
     float     accumulated_score;
-    uint32_t  previous_state_id;  /* index of parent state in beams[prev_pos] */
-    uint32_t  prev_pos;           /* which beam the parent lives in */
+    uint32_t  backpointer_slot;   /* index of parent state in beams[prev_pos] */
+    uint32_t  backpointer_pos;    /* which beam the parent lives in */
     uint32_t  token_id;           /* token emitted by the edge that created this state */
+    uint32_t  generation;         /* monotonic counter for stale backpointer detection */
 } ConstraintState;
 
 typedef struct {
@@ -71,8 +72,20 @@ typedef struct {
     uint32_t count;
 } BeamQueue;
 
+/* -------------------------------------------------------------------------
+ * Viterbi backpointer: immutable record of how a state was reached
+ * ------------------------------------------------------------------------- */
+typedef struct {
+    uint32_t prev_pos;      /* source beam position */
+    uint32_t prev_slot;     /* source beam slot */
+    uint32_t token_id;      /* token emitted on this edge */
+    float    score;         /* accumulated score at this point */
+    uint32_t generation;    /* matches state->generation for validation */
+} ViterbiBackpointer;
+
 typedef struct {
     BeamQueue beams[MAX_LATTICE_POS + 1];
+    ViterbiBackpointer backpointers[MAX_LATTICE_POS + 1][BEAM_WIDTH];
 } ParseLattice;
 
 /* -------------------------------------------------------------------------
@@ -101,20 +114,31 @@ static inline ConstraintState transition_state(const ConstraintState *prev,
         .active_features    = prev->active_features    | edge->features,
         .forbidden_features = prev->forbidden_features | edge->forbids,
         .accumulated_score  = prev->accumulated_score  + score,
-        .previous_state_id  = parent_state_idx,
-        .prev_pos           = parent_pos,
-        .token_id           = token_id
+        .backpointer_slot   = parent_state_idx,
+        .backpointer_pos    = parent_pos,
+        .token_id           = token_id,
+        .generation         = prev->generation + 1
     };
 }
 
 /* -------------------------------------------------------------------------
  * Fixed-width beam insert: O(K) with K = 64. No mallocs, no pointers.
+ * Records backpointer for Viterbi backtrack.
  * ------------------------------------------------------------------------- */
-static inline void beam_insert(BeamQueue *beam, const ConstraintState *st)
+static inline uint32_t beam_insert(BeamQueue *beam, const ConstraintState *st,
+                                   ParseLattice *lattice, uint32_t pos)
 {
     if (__builtin_expect(beam->count < BEAM_WIDTH, 1)) {
-        beam->states[beam->count++] = *st;
-        return;
+        uint32_t slot = beam->count++;
+        beam->states[slot] = *st;
+        lattice->backpointers[pos][slot] = (ViterbiBackpointer){
+            .prev_pos = st->backpointer_pos,
+            .prev_slot = st->backpointer_slot,
+            .token_id = st->token_id,
+            .score = st->accumulated_score,
+            .generation = st->generation
+        };
+        return slot;
     }
 
     uint32_t min_idx = 0;
@@ -127,6 +151,17 @@ static inline void beam_insert(BeamQueue *beam, const ConstraintState *st)
         }
     }
 
-    if (st->accumulated_score > min_score)
+    if (st->accumulated_score > min_score) {
         beam->states[min_idx] = *st;   /* evict weakest hypothesis */
+        lattice->backpointers[pos][min_idx] = (ViterbiBackpointer){
+            .prev_pos = st->backpointer_pos,
+            .prev_slot = st->backpointer_slot,
+            .token_id = st->token_id,
+            .score = st->accumulated_score,
+            .generation = st->generation
+        };
+        return min_idx;
+    }
+
+    return BEAM_WIDTH;  /* rejected */
 }

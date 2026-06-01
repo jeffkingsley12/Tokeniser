@@ -9,14 +9,20 @@
 #include "gemini_phrase_seed.h"
 #include "libgemini.h"
 #include "gemini_internal.h"
+#include "lexeme_intern.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <limits.h>      /* for INT_MAX */
 #include <stdbool.h>     /* for bool type */
+#include <stdlib.h>      /* for calloc, free */
 
 /* Forward declaration for le_set_scc_forced (defined in gemini_accessors.c) */
 void le_set_scc_forced(EngineContext *ctx, SccID scc_id, bool forced);
+
+/* CRITICAL FIX C-5: Move extern declarations to top of file (proper linkage) */
+void le_kosaraju_scc(EngineContext *ctx);
+void le_recompute_scc_metrics(EngineContext *ctx);
 
 /* ── Built-in phrase table (mirrors luganda_phrase_registry.c) ──────────────── */
 
@@ -107,6 +113,11 @@ static int inject_phrase(EngineContext *ctx, Tokenizer *tok,
      * word happened to be assigned token ID 0 (i.e. the <unk> token). */
     if (id1 == INVALID || id2 == INVALID) return -1;
 
+    /* FIX A2: Seed the canonical registry so phrase components have
+     * non-zero frequency footprints before the first epoch runs. */
+    le_intern_lexeme(ctx, w1);
+    le_intern_lexeme(ctx, w2);
+
     NodeID n1 = le_get_or_create_node(ctx, id1);
     NodeID n2 = le_get_or_create_node(ctx, id2);
     if (n1 == LE_INVALID || n2 == LE_INVALID) return -1;
@@ -117,7 +128,22 @@ static int inject_phrase(EngineContext *ctx, Tokenizer *tok,
     int calls = (int)(weight_calls + 0.5f);
     if (calls < 1) calls = 1;
 
+    /* HYPERGRAPH: Use le_add_edge_bulk for now - relation types will be
+     * applied in a future update when the edge creation API supports relations */
     le_add_edge_bulk(ctx, n1, n2, (float)calls);
+
+    /* CRITICAL FIX: Increment SCC frequency to activate seeded phrases
+     * Without this, seeded SCCs have freq=0 and never get promoted.
+     * Increment by min_freq (5) to immediately satisfy frequency threshold. */
+    SccID sid1 = atomic_load_explicit(&ctx->transient_nodes[n1].scc_id, memory_order_acquire);
+    SccID sid2 = atomic_load_explicit(&ctx->transient_nodes[n2].scc_id, memory_order_acquire);
+    if (sid1 != INVALID && sid1 < MAX_SCCS) {
+        atomic_fetch_add_explicit(&ctx->scc_nodes[sid1].freq, 5, memory_order_relaxed);
+    }
+    if (sid2 != INVALID && sid2 < MAX_SCCS && sid2 != sid1) {
+        atomic_fetch_add_explicit(&ctx->scc_nodes[sid2].freq, 5, memory_order_relaxed);
+    }
+
     return 0;
 }
 
@@ -128,14 +154,38 @@ static int inject_phrase(EngineContext *ctx, Tokenizer *tok,
  */
 static void mark_scc_forced(EngineContext *ctx, NodeID n) {
     if (n == LE_INVALID || n >= MAX_NODES) return;
-    /* FIX: transient_nodes[n].scc_id is a plain uint32_t; the sentinel is INVALID
-     * (0xFFFFFFFF), not LE_INVALID (which is the NodeID sentinel — same value, but
-     * using LE_INVALID here was misleading since this is an SccID). Also added the
-     * n >= MAX_NODES guard to prevent OOB access if n is unexpectedly large. */
-    SccID sid = ctx->transient_nodes[n].scc_id;
+    /* FIX: transient_nodes[n].scc_id is _Atomic uint32_t; must use atomic_load_explicit
+     * to avoid C11 undefined behavior from non-atomic access to atomic object. */
+    SccID sid = atomic_load_explicit(&ctx->transient_nodes[n].scc_id, memory_order_acquire);
     if (sid == INVALID || sid >= MAX_SCCS) return;
     /* Use atomic accessor instead of plain assignment to avoid data race */
     le_set_scc_forced(ctx, sid, true);
+}
+
+/*
+ * activate_seeded_scc - Bootstrap frequency and stability parameters for seeded SCCs
+ *
+ * This ensures seeded phrases can climb out of the zero-frequency trap by
+ * pre-priming their frequency and stability counters to meet promotion thresholds.
+ */
+static void activate_seeded_scc(EngineContext *ctx, NodeID n, uint32_t min_freq) {
+    if (n == LE_INVALID || n >= MAX_NODES) return;
+
+    SccID sid = atomic_load_explicit(&ctx->transient_nodes[n].scc_id, memory_order_acquire);
+    if (sid == INVALID || sid >= MAX_SCCS) return;
+
+    /* 1. Force the frequency past the engine promotion threshold */
+    uint32_t current_freq = atomic_load_explicit(&ctx->scc_nodes[sid].freq, memory_order_acquire);
+    if (current_freq < min_freq) {
+        atomic_store_explicit(&ctx->scc_nodes[sid].freq, min_freq, memory_order_release);
+    }
+
+    /* 2. Give the component an explicit historical footprint so stable_epochs won't be zeroed */
+    uint32_t members = atomic_load_explicit(&ctx->scc_nodes[sid].member_count, memory_order_acquire);
+    atomic_store_explicit(&ctx->scc_nodes[sid].last_member_count, members, memory_order_release);
+
+    /* 3. Give it a baseline stability head-start */
+    atomic_store_explicit(&ctx->scc_nodes[sid].stable_epochs, 1, memory_order_release);
 }
 
 /* ── gemini_phrase_seed_custom ──────────────────────────────────────────────── */
@@ -153,12 +203,25 @@ int gemini_phrase_seed_custom(EngineContext        *ctx,
 
     int seeded = 0, forced = 0, edges = 0, nodes_created = 0;
 
+    /* M-4 FIX: Cache node IDs to avoid redundant lookups in second loop */
+    int entry_count = 0;
+    for (int i = 0; entries[i].first_word; i++) entry_count++;
+    NodeID *cached_n1 = (NodeID *)calloc(entry_count, sizeof(NodeID));
+    NodeID *cached_n2 = (NodeID *)calloc(entry_count, sizeof(NodeID));
+    if (!cached_n1 || !cached_n2) {
+        if (cached_n1) free(cached_n1);
+        if (cached_n2) free(cached_n2);
+        return -1;
+    }
+
     for (int i = 0; entries[i].first_word; i++) {
         const PhraseSeedEntry *e = &entries[i];
         float calls = base_weight * e->bonus_multiplier;
-        /* Clamp to prevent float overflow to Inf and subsequent undefined behavior
-         * when casting to int */
-        if (!isfinite(calls) || calls > (float)INT_MAX) calls = (float)INT_MAX;
+        /* CRITICAL FIX CR7: Clamp to prevent float overflow to Inf and subsequent undefined behavior
+         * when casting to int. Previous code used (float)INT_MAX which rounds up to 2147483648.0f
+         * (INT_MAX + 1), and casting that to int is undefined behavior per C11 §6.3.1.4.
+         * INT-2 FIX: Use 2147483520.0f (highest precise float under INT_MAX) to avoid UB. */
+        if (!isfinite(calls) || calls >= 2147483520.0f) calls = 2147483520.0f;
 
         /*
          * FIX: inject_phrase now outputs the resolved NodeIDs for w1 and w2.
@@ -172,7 +235,15 @@ int gemini_phrase_seed_custom(EngineContext        *ctx,
                                &n1, &n2);
         uint32_t nc_after = atomic_load(&ctx->node_count);
 
-        if (rc < 0) continue;
+        if (rc < 0) {
+            cached_n1[i] = LE_INVALID;
+            cached_n2[i] = LE_INVALID;
+            continue;
+        }
+
+        /* M-4 FIX: Cache node IDs for reuse in second loop */
+        cached_n1[i] = n1;
+        cached_n2[i] = n2;
 
         /* FIX: nc_after - nc_before as uint32_t wraps to a huge value if nc_after
          * somehow equals nc_before (no new nodes). Cast to int32_t first and clamp. */
@@ -188,6 +259,30 @@ int gemini_phrase_seed_custom(EngineContext        *ctx,
             forced++;
         }
     }
+
+    /* CRITICAL FIX: Recompute SCCs after all injections to get actual SCC assignments
+     * This ensures activate_seeded_scc operates on the real SCCs, not SCC 0 */
+    le_kosaraju_scc(ctx);
+    le_recompute_scc_metrics(ctx);
+
+    /* Now activate the REAL SCCs containing the seeded nodes */
+    for (int i = 0; entries[i].first_word; i++) {
+        const PhraseSeedEntry *e = &entries[i];
+        if (e->rank <= force_rank_threshold) {
+            /* M-4 FIX: Use cached node IDs instead of redundant tokenizer_get_id + le_get_or_create_node lookups */
+            NodeID n1 = cached_n1[i];
+            NodeID n2 = cached_n2[i];
+            if (n1 != LE_INVALID && n2 != LE_INVALID) {
+                uint32_t target_min_freq = ctx->min_freq;
+                activate_seeded_scc(ctx, n1, target_min_freq);
+                activate_seeded_scc(ctx, n2, target_min_freq);
+            }
+        }
+    }
+
+    /* M-4 FIX: Free cached node ID arrays */
+    free(cached_n1);
+    free(cached_n2);
 
     if (result) {
         result->phrases_seeded    = seeded;
